@@ -1,82 +1,41 @@
-import 'package:equatable/equatable.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:json_annotation/json_annotation.dart';
+part 'user_model.g.dart';
 
-class UserModel extends Equatable {
-  final String uid; // ID duy nhất từ Firebase Auth
+@JsonSerializable()
+class UserModel {
+  final String uid;
   final String name;
   final String email;
-  final String role; // 'admin' hoặc 'user'
-  final String status; // 'pending' (chờ duyệt) hoặc 'approved' (đã duyệt)
-  final String faceImageUrl; // Link ảnh trên Firebase Storage
-  final DateTime? createdAt;
+  final String role;
+  final List<String> faceImageUrls;
+  // Các thuộc tính mới
+  final String num;
+  final String birthday;
+  final String job;
 
-  const UserModel({
+  UserModel({
     required this.uid,
     required this.name,
     required this.email,
     required this.role,
-    required this.status,
-    required this.faceImageUrl,
-    this.createdAt,
+    required this.faceImageUrls,
+    required this.num,
+    required this.birthday,
+    required this.job,
   });
 
-  // Chuyển đổi dữ liệu từ Firestore (Map) sang Model
-  factory UserModel.fromMap(Map<String, dynamic> map) {
+  factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      uid: map['uid'] ?? '',
-      name: map['name'] ?? '',
-      email: map['email'] ?? '',
-      role: map['role'] ?? 'user',
-      status: map['status'] ?? 'pending',
-      faceImageUrl: map['faceImageUrl'] ?? '',
-      // Xử lý kiểu dữ liệu Timestamp của Firestore
-      createdAt: map['createdAt'] != null
-          ? (map['createdAt'] as Timestamp).toDate()
-          : null,
+      uid: json['uid'] ?? '',
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+      role: json['role'] ?? 'user',
+      // Thêm ?? '' (giá trị mặc định là chuỗi rỗng) để không bị lỗi Null
+      num: json['num'] ?? '',
+      birthday: json['birthday'] ?? '',
+      job: json['job'] ?? '',
+      faceImageUrls: List<String>.from(json['faceImageUrls'] ?? []),
     );
   }
-
-  // Chuyển đổi từ Model sang Map để lưu lên Firestore
-  Map<String, dynamic> toMap() {
-    return {
-      'uid': uid,
-      'name': name,
-      'email': email,
-      'role': role,
-      'status': status,
-      'faceImageUrl': faceImageUrl,
-      'createdAt':
-          createdAt ??
-          FieldValue.serverTimestamp(), // Tự động lấy thời gian server
-    };
-  }
-
-  // Phương thức sao chép model với các thay đổi (hữu ích cho Cubit)
-  UserModel copyWith({
-    String? name,
-    String? role,
-    String? status,
-    String? faceImageUrl,
-  }) {
-    return UserModel(
-      uid: uid,
-      email: email,
-      name: name ?? this.name,
-      role: role ?? this.role,
-      status: status ?? this.status,
-      faceImageUrl: faceImageUrl ?? this.faceImageUrl,
-      createdAt: createdAt,
-    );
-  }
-
-  @override
-  List<Object?> get props => [
-    uid,
-    name,
-    email,
-    role,
-    status,
-    faceImageUrl,
-    createdAt,
-  ];
+  Map<String, dynamic> toJson() => _$UserModelToJson(this);
 }
