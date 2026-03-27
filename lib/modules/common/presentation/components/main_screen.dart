@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/application/cubit/auth_cubit.dart';
 import '../../../home/presentation/components/admin_home_page.dart';
 import '../../../home/presentation/components/home_page.dart';
@@ -19,7 +20,6 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Lấy thông tin user hiện tại từ AuthCubit
     final authState = context.read<AuthCubit>().state;
     String role = 'user';
 
@@ -27,59 +27,151 @@ class _MainScreenState extends State<MainScreen> {
       role = authState.user.role;
     }
 
-    // 2. Xác định danh sách các trang dựa trên Role
     final List<Widget> pages = role == 'admin'
         ? [
-            const AdminHomePage(), // Trang quản lý thiết bị của Admin
-            const AdminLabPage(), // Trang duyệt đăng ký của Admin
-            const InfoPage(), // Trang cá nhân dùng chung
+            const AdminHomePage(),
+            const AdminLabPage(),
+            const InfoPage(),
           ]
         : [
-            const HomePage(), // Trang xem thiết bị của User
-            const LabPage(), // Trang đăng ký của User
-            const InfoPage(), // Trang cá nhân dùng chung
+            const HomePage(),
+            const LabPage(),
+            const InfoPage(),
           ];
 
-    // 3. Xác định danh sách các Tab (Icon/Label) dựa trên Role
-    final List<BottomNavigationBarItem> menuItems = role == 'admin'
+    final List<_NavItemData> navItems = role == 'admin'
         ? const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.admin_panel_settings),
+            _NavItemData(
+              icon: Icons.admin_panel_settings_outlined,
+              activeIcon: Icons.admin_panel_settings,
               label: 'Quản lý máy',
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.fact_check_rounded),
+            _NavItemData(
+              icon: Icons.fact_check_outlined,
+              activeIcon: Icons.fact_check_rounded,
               label: 'Duyệt Lab',
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.account_circle_rounded),
+            _NavItemData(
+              icon: Icons.account_circle_outlined,
+              activeIcon: Icons.account_circle,
               label: 'Cá nhân',
             ),
           ]
         : const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_max_rounded),
+            _NavItemData(
+              icon: Icons.home_max_outlined,
+              activeIcon: Icons.home_max,
               label: 'Trang chủ',
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.biotech_rounded),
+            _NavItemData(
+              icon: Icons.biotech_outlined,
+              activeIcon: Icons.biotech,
               label: 'Phòng Lab',
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.account_circle_rounded),
+            _NavItemData(
+              icon: Icons.account_circle_outlined,
+              activeIcon: Icons.account_circle,
               label: 'Cá nhân',
             ),
           ];
 
     return Scaffold(
       body: IndexedStack(index: _selectedIndex, children: pages),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF007AFF),
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        items: menuItems,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: List.generate(navItems.length, (index) {
+                final isSelected = _selectedIndex == index;
+                return Expanded(
+                  child: _NavItem(
+                    item: navItems[index],
+                    isSelected: isSelected,
+                    onTap: () => setState(() => _selectedIndex = index),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItemData {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+
+  const _NavItemData({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+  });
+}
+
+class _NavItem extends StatelessWidget {
+  final _NavItemData item;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.item,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? const LinearGradient(
+                  colors: [
+                    AppTheme.primaryGradientStart,
+                    AppTheme.primaryGradientEnd,
+                  ],
+                )
+              : null,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSelected ? item.activeIcon : item.icon,
+              color: isSelected ? Colors.white : Colors.grey,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              item.label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                color: isSelected ? Colors.white : Colors.grey,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

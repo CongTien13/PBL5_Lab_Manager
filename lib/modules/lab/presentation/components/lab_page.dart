@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart'; // Để định dạng ngày giờ
+import 'package:intl/intl.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/application/cubit/auth_cubit.dart';
 import '../../../home/presentation/application/cubit/device_cubit.dart';
 import '../../../../core/models/device_model.dart';
@@ -18,7 +19,6 @@ class _LabPageState extends State<LabPage> {
   @override
   void initState() {
     super.initState();
-    // Bắt đầu lắng nghe lịch cá nhân ngay khi vào trang
     final authState = context.read<AuthCubit>().state;
     if (authState is AuthSuccess) {
       context.read<BookingCubit>().watchMyBookings(authState.user.uid);
@@ -30,37 +30,140 @@ class _LabPageState extends State<LabPage> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text("Quản lý phòng Lab"),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: "Đăng ký mới", icon: Icon(Icons.add_circle_outline)),
-              Tab(text: "Lịch của tôi", icon: Icon(Icons.history)),
-            ],
-            indicatorColor: Colors.white,
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: AppTheme.backgroundGradient,
           ),
-        ),
-        body: BlocListener<BookingCubit, BookingState>(
-          listener: (context, state) {
-            if (state is BookingSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Yêu cầu thành công!")),
-              );
-            }
-            if (state is BookingError) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.red,
+          child: SafeArea(
+            child: Column(
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [
+                                  AppTheme.primaryGradientStart,
+                                  AppTheme.primaryGradientEnd,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.calendar_month_outlined,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              "Quản lý phòng Lab",
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              );
-            }
-          },
-          child: const TabBarView(
-            children: [
-              _RegisterTab(), // Tab đăng ký thiết bị
-              _MyBookingsTab(), // Tab quản lý lịch cá nhân
-            ],
+
+                // Tab Bar
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: TabBar(
+                    labelColor: Colors.white,
+                    unselectedLabelColor: const Color(0xFF6366F1),
+                    indicator: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          AppTheme.primaryGradientStart,
+                          AppTheme.primaryGradientEnd,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    indicatorPadding: const EdgeInsets.all(4),
+                    dividerColor: Colors.transparent,
+                    tabs: const [
+                      Tab(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_circle_outline, size: 20),
+                            SizedBox(width: 8),
+                            Text("Đăng ký mới"),
+                          ],
+                        ),
+                      ),
+                      Tab(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.history, size: 20),
+                            SizedBox(width: 8),
+                            Text("Lịch của tôi"),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Tab Content
+                Expanded(
+                  child: BlocListener<BookingCubit, BookingState>(
+                    listener: (context, state) {
+                      if (state is BookingSuccess) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text("Yêu cầu thành công!"),
+                            backgroundColor: AppTheme.successGreen,
+                          ),
+                        );
+                      }
+                      if (state is BookingError) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(state.message),
+                            backgroundColor: AppTheme.errorRed,
+                          ),
+                        );
+                      }
+                    },
+                    child: const TabBarView(
+                      children: [
+                        _RegisterTab(),
+                        _MyBookingsTab(),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -77,47 +180,50 @@ class _RegisterTab extends StatelessWidget {
     return BlocBuilder<DeviceCubit, DeviceState>(
       builder: (context, state) {
         if (state is DeviceLoaded) {
+          if (state.devices.isEmpty) {
+            return const Center(
+              child: Text("Không có thiết bị nào"),
+            );
+          }
+
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             itemCount: state.devices.length,
             itemBuilder: (context, index) {
               final device = state.devices[index];
               final bool isReady = device.status == 'ready';
 
-              return Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ListTile(
-                  title: Text(
-                    device.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(isReady ? "Sẵn sàng" : "Đang bận"),
-                  trailing: Icon(
-                    Icons.edit_calendar_outlined,
-                    color: isReady ? const Color(0xFF007AFF) : Colors.grey,
-                  ),
-                  onTap: isReady
-                      ? () => _showBookingForm(context, device)
-                      : null,
-                ),
+              return _DeviceBookingCard(
+                device: device,
+                isReady: isReady,
+                onTap: isReady ? () => _showBookingForm(context, device) : null,
               );
             },
           );
         }
-        return const Center(child: CircularProgressIndicator());
+        return const Center(
+          child: CircularProgressIndicator(color: AppTheme.primaryGradientStart),
+        );
       },
     );
   }
 
-  // Hàm chọn ngày giờ (giữ nguyên logic của bạn)
   void _showBookingForm(BuildContext context, DeviceModel device) async {
     DateTime? selectedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 7)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.primaryGradientStart,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (selectedDate == null) return;
 
@@ -163,6 +269,104 @@ class _RegisterTab extends StatelessWidget {
   }
 }
 
+class _DeviceBookingCard extends StatelessWidget {
+  final DeviceModel device;
+  final bool isReady;
+  final VoidCallback? onTap;
+
+  const _DeviceBookingCard({
+    required this.device,
+    required this.isReady,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = isReady ? AppTheme.successGreen : Colors.grey;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.devices,
+                    color: statusColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        device.name,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        isReady ? "Sẵn sàng" : "Đang bận",
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: statusColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isReady
+                        ? const Color(0xFF6366F1).withOpacity(0.1)
+                        : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.edit_calendar_outlined,
+                    color: isReady ? const Color(0xFF6366F1) : Colors.grey.shade400,
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // --- TAB 2: LỊCH CỦA TÔI ---
 class _MyBookingsTab extends StatelessWidget {
   const _MyBookingsTab();
@@ -173,110 +377,177 @@ class _MyBookingsTab extends StatelessWidget {
       builder: (context, state) {
         List<BookingModel> bookingsToShow = [];
 
-        // Lấy danh sách để hiển thị tùy theo State
         if (state is BookingLoaded) {
           bookingsToShow = state.myBookings;
         } else if (state is BookingSubmitting) {
           bookingsToShow = state.cachedBookings;
         }
 
-        // Nếu có dữ liệu thì hiện List, kể cả khi đang Submitting
         if (bookingsToShow.isNotEmpty) {
           return Stack(
             children: [
               ListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 itemCount: bookingsToShow.length,
                 itemBuilder: (context, index) =>
-                    _buildBookingCard(context, bookingsToShow[index]),
+                    _BookingCard(booking: bookingsToShow[index]),
               ),
               if (state is BookingSubmitting)
-                const LinearProgressIndicator(), // Hiện thanh chạy nhỏ ở trên đầu khi đang gửi
+                const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: LinearProgressIndicator(
+                    color: AppTheme.primaryGradientStart,
+                    backgroundColor: Colors.transparent,
+                  ),
+                ),
             ],
           );
         }
 
-        // Chỉ hiện xoay tròn khi thực sự không có gì trong tay
         if (state is BookingSubmitting || state is BookingInitial) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: CircularProgressIndicator(color: AppTheme.primaryGradientStart),
+          );
         }
 
         if (state is BookingError) {
-          return Center(child: Text(state.message));
+          return Center(
+            child: Text(
+              state.message,
+              style: const TextStyle(color: Colors.red),
+            ),
+          );
         }
 
-        return const Center(child: Text("Bạn chưa có lịch đặt nào"));
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.calendar_today_outlined,
+                size: 64,
+                color: Colors.grey.shade300,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "Bạn chưa có lịch đặt nào",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+        );
       },
     );
   }
+}
 
-  Widget _buildBookingCard(BuildContext context, BookingModel booking) {
+class _BookingCard extends StatelessWidget {
+  final BookingModel booking;
+
+  const _BookingCard({required this.booking});
+
+  @override
+  Widget build(BuildContext context) {
     final timeFormat = DateFormat('HH:mm - dd/MM');
-    Color statusColor;
-    switch (booking.status) {
-      case 'approved':
-        statusColor = Colors.blue;
-        break;
-      case 'using':
-        statusColor = Colors.green;
-        break;
-      case 'pending':
-        statusColor = Colors.orange;
-        break;
-      case 'finished':
-        statusColor = Colors.grey;
-        break;
-      default:
-        statusColor = Colors.red;
-    }
+    final statusColor = AppTheme.getStatusColor(booking.status);
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                booking.deviceName,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                "${timeFormat.format(booking.startTime)} đến ${timeFormat.format(booking.endTime)}",
-              ),
-              trailing: Text(
-                booking.status.toUpperCase(),
-                style: TextStyle(
-                  color: statusColor,
-                  fontWeight: FontWeight.bold,
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.event_available,
+                    color: statusColor,
+                    size: 20,
+                  ),
                 ),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        booking.deviceName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "${timeFormat.format(booking.startTime)} đến ${timeFormat.format(booking.endTime)}",
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                StatusBadge(status: booking.status, isCompact: true),
+              ],
             ),
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // 1. Nút Hủy (Chỉ hiện khi chưa dùng)
                 if (booking.status == 'pending' || booking.status == 'approved')
                   TextButton.icon(
                     onPressed: () =>
                         context.read<BookingCubit>().cancelBooking(booking.id!),
-                    icon: const Icon(Icons.cancel, color: Colors.red),
+                    icon: const Icon(Icons.cancel, color: Colors.red, size: 18),
                     label: const Text(
                       "Hủy",
                       style: TextStyle(color: Colors.red),
                     ),
                   ),
-                // 2. Nút Dừng (Chỉ hiện khi đang dùng - Pi sẽ chuyển status sang using sau khi quét mặt)
                 if (booking.status == 'using')
                   ElevatedButton.icon(
                     onPressed: () => context
                         .read<BookingCubit>()
                         .stopUsingDevice(booking.deviceId, booking.id!),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
+                      backgroundColor: AppTheme.warningOrange,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                     ),
-                    icon: const Icon(Icons.stop),
+                    icon: const Icon(Icons.stop, size: 18),
                     label: const Text("Dừng dùng"),
                   ),
               ],
