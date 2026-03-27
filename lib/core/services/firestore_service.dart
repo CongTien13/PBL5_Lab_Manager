@@ -1,21 +1,31 @@
-// import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-// class FirestoreService {
-//   final FirebaseFirestore _db = FirebaseFirestore.instance;
+class FirestoreService {
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-//   // Lấy dữ liệu Stream (Realtime)
-//   Stream<List<Map<String, dynamic>>> getStreamCollection(String path) {
-//     return _db.collection(path).snapshots().map((snapshot) =>
-//         snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList());
-//   }
+  // Lấy Stream dữ liệu từ một Collection
+  Stream<QuerySnapshot<Map<String, dynamic>>> getStream(
+    String path, {
+    Query Function(Query query)? query,
+  }) {
+    Query collection = _db.collection(path);
+    if (query != null) collection = query(collection);
+    return collection.snapshots()
+        as Stream<QuerySnapshot<Map<String, dynamic>>>;
+  }
 
-//   // Thêm mới dữ liệu
-//   Future<void> addDocument(String path, Map<String, dynamic> data) {
-//     return _db.collection(path).add(data);
-//   }
+  // Thêm mới Document
+  Future<DocumentReference> add(String path, Map<String, dynamic> data) {
+    return _db.collection(path).add(data);
+  }
 
-//   // Cập nhật dữ liệu (Dùng cho việc Duyệt)
-//   Future<void> updateDocument(String path, String docId, Map<String, dynamic> data) {
-//     return _db.collection(path).doc(docId).update(data);
-//   }
-// }
+  // Cập nhật Document
+  Future<void> update(String path, String docId, Map<String, dynamic> data) {
+    return _db.collection(path).doc(docId).update(data);
+  }
+
+  // Xóa Document
+  Future<void> delete(String path, String docId) {
+    return _db.collection(path).doc(docId).delete();
+  }
+}
