@@ -64,4 +64,14 @@ class AuthCubit extends Cubit<AuthState> {
       emit(AuthError(e.toString()));
     }
   }
+
+  // Đăng xuất
+  Future<void> signOut() async {
+    try {
+      await _authRepository.signOut();
+      emit(AuthInitial());
+    } catch (e) {
+      emit(AuthError(e.toString()));
+    }
+  }
 }
