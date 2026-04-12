@@ -1,2 +1,6 @@
-node_modules
-.env
+myenv
+lfw
+dataset
+casia
+weights/face_extractor.keras
+casia.rar
