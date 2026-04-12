@@ -61,4 +61,20 @@ class LabRepository {
   Future<void> updateBookingStatus(String bookingId, String newStatus) {
     return _service.update('bookings', bookingId, {'status': newStatus});
   }
+
+  // Lấy lịch sử đặt lịch theo thiết bị
+  Stream<List<BookingModel>> watchBookingsByDevice(String deviceId) {
+    return _service
+        .getStream(
+          'bookings',
+          query: (q) => q.where('deviceId', isEqualTo: deviceId),
+        )
+        .map(
+          (snapshot) => snapshot.docs
+              .map(
+                (doc) => BookingModel.fromJson({...doc.data(), 'id': doc.id}),
+              )
+              .toList(),
+        );
+  }
 }

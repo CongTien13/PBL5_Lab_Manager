@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../application/cubit/device_cubit.dart';
 import '../../../../core/models/device_model.dart';
+import '../../../lab/presentation/components/device_bookings_page.dart';
 
 class AdminHomePage extends StatelessWidget {
   const AdminHomePage({super.key});
@@ -116,6 +117,15 @@ class AdminHomePage extends StatelessWidget {
                               device: device,
                               onEdit: () => _showDeviceDialog(context, device: device),
                               onDelete: () => _confirmDelete(context, device.id),
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => DeviceBookingsPage(
+                                    deviceId: device.id,
+                                    deviceName: device.name,
+                                  ),
+                                ),
+                              ),
                             );
                           },
                         );
@@ -397,11 +407,13 @@ class _AdminDeviceCard extends StatelessWidget {
   final DeviceModel device;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onTap;
 
   const _AdminDeviceCard({
     required this.device,
     required this.onEdit,
     required this.onDelete,
+    required this.onTap,
   });
 
   @override
@@ -422,76 +434,80 @@ class _AdminDeviceCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            // Icon
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // Icon
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.devices,
+                  color: statusColor,
+                  size: 28,
+                ),
               ),
-              child: Icon(
-                Icons.devices,
-                color: statusColor,
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 16),
+              const SizedBox(width: 16),
 
-            // Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      device.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      device.description,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    StatusBadge(status: device.status, isCompact: true),
+                  ],
+                ),
+              ),
+
+              // Actions
+              Column(
                 children: [
-                  Text(
-                    device.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E293B),
+                  IconButton(
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined),
+                    color: AppTheme.primaryGradientStart,
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppTheme.primaryGradientStart.withOpacity(0.1),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    device.description,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
+                  IconButton(
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline),
+                    color: AppTheme.errorRed,
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppTheme.errorRed.withOpacity(0.1),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
-                  StatusBadge(status: device.status, isCompact: true),
                 ],
               ),
-            ),
-
-            // Actions
-            Column(
-              children: [
-                IconButton(
-                  onPressed: onEdit,
-                  icon: const Icon(Icons.edit_outlined),
-                  color: AppTheme.primaryGradientStart,
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppTheme.primaryGradientStart.withOpacity(0.1),
-                  ),
-                ),
-                IconButton(
-                  onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline),
-                  color: AppTheme.errorRed,
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppTheme.errorRed.withOpacity(0.1),
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

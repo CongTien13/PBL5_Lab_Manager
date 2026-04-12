@@ -7,6 +7,7 @@ import '../../../home/presentation/application/cubit/device_cubit.dart';
 import '../../../../core/models/device_model.dart';
 import '../../../../core/models/booking_model.dart';
 import '../application/cubit/booking_cubit.dart';
+import 'date_time_picker.dart';
 
 class LabPage extends StatefulWidget {
   const LabPage({super.key});
@@ -209,35 +210,28 @@ class _RegisterTab extends StatelessWidget {
   }
 
   void _showBookingForm(BuildContext context, DeviceModel device) async {
-    DateTime? selectedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 7)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppTheme.primaryGradientStart,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (selectedDate == null) return;
+    DateTime selectedDate = DateTime.now();
+    TimeOfDay startTime = TimeOfDay.now();
+    TimeOfDay endTime = TimeOfDay.now();
 
-    TimeOfDay? startTime = await showTimePicker(
+    final result = await showModalBottomSheet<bool>(
       context: context,
-      initialTime: TimeOfDay.now(),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => BookingDateTimeSheet(
+        deviceName: device.name,
+        initialDate: selectedDate,
+        initialStartTime: startTime,
+        initialEndTime: endTime,
+        onConfirm: (date, start, end) {
+          selectedDate = date;
+          startTime = start;
+          endTime = end;
+        },
+      ),
     );
-    if (startTime == null) return;
 
-    TimeOfDay? endTime = await showTimePicker(
-      context: context,
-      initialTime: startTime,
-    );
-    if (endTime == null) return;
+    if (result != true) return;
 
     final authState = context.read<AuthCubit>().state;
     if (authState is AuthSuccess) {
