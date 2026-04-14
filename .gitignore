@@ -1,6 +1,5 @@
 myenv
-lfw
-dataset
+lfw 
 casia
 weights/face_extractor.keras
 casia.rar
