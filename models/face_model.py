@@ -1,23 +1,17 @@
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from .mobilefacenet import MobileFaceNet   
 
-from models.cnn_model import MobileFacenet
-from models.arcface import ArcMarginProduct
+class FaceModel:
+    def __init__(self, weight_path, device):
+        self.device = device
+        self.model = MobileFaceNet(embedding_size=128).to(device)
 
-class FaceNetModel(nn.Module):
-    def __init__(self, num_classes):
-        super().__init__()
+        checkpoint = torch.load(weight_path, map_location=device)
+        self.model.load_state_dict(checkpoint['model_state_dict'])
 
-        self.backbone = MobileFacenet()
-        self.arcface = ArcMarginProduct(128, num_classes)
+        self.model.eval()
 
-    def forward(self, x, label=None):
-        emb = self.backbone(x)
-    
-        emb = torch.nn.functional.normalize(emb)
-
-        if label is not None:
-            return self.arcface(emb, label)
-
+    def get_embedding(self, face_tensor):
+        with torch.no_grad():
+            emb = self.model(face_tensor.to(self.device))
         return emb

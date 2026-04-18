@@ -2,4 +2,6 @@ myenv
 lfw 
 casia
 weights/face_extractor.keras
+weights/face_db.npy
+
 casia.rar

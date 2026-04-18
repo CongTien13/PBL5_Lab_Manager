@@ -1,49 +1,57 @@
 import os
 import cv2
+import torch
 import numpy as np
-import tensorflow as tf
-import pickle
-from config.settings import MODEL_PATH, DB_PATH, IMG_SIZE
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+from models.face_model import FaceModel
+from services.face_detector import FaceDetector
 
-def update_database():
-    if not os.path.exists(MODEL_PATH):
-        print("Model file not found")
-        return
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = tf.keras.models.load_model(MODEL_PATH)
-    database = {}
-    clean_data_path = "dataset_clean"
+model = FaceModel("weights/last_checkpoint.pth", device)
+detector = FaceDetector(device)
 
-    for person_name in os.listdir(clean_data_path):
-        person_dir = os.path.join(clean_data_path, person_name)
-        if not os.path.isdir(person_dir):
+DATASET_PATH = "dataset"
+SAVE_PATH = "weights/face_db.npy"
+
+database = {}
+
+for user in os.listdir(DATASET_PATH):
+    user_path = os.path.join(DATASET_PATH, user)
+
+    if not os.path.isdir(user_path):
+        continue
+
+    embeddings = []
+
+    for img_name in os.listdir(user_path):
+        if not img_name.lower().endswith(('.jpg', '.jpeg', '.png')):
             continue
 
-        embeddings = []
-        for img_name in os.listdir(person_dir):
-            img_path = os.path.join(person_dir, img_name)
-            img = cv2.imread(img_path)
-            if img is None:
-                continue
+        img_path = os.path.join(user_path, img_name)
+        img = cv2.imread(img_path)
 
-            img = cv2.resize(img, (IMG_SIZE, IMG_SIZE))
-            img = img.astype('float32') / 255.0
-            img = np.expand_dims(img, axis=0)
+        if img is None:
+            continue
 
-            vec = model.predict(img, verbose=0)[0]
-            vec = vec / np.linalg.norm(vec)
-            embeddings.append(vec)
+        rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        face = detector.detect(rgb)
 
-        if len(embeddings) > 0:
-            database[person_name] = np.array(embeddings)
-            print(f"Stored {len(embeddings)} vectors for {person_name}")
+        if face is None:
+            continue
 
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    with open(DB_PATH, "wb") as f:
-        pickle.dump(database, f)
-    print(f"Database saved to {DB_PATH}")
+        face = face.unsqueeze(0).to(device)
 
-if __name__ == "__main__":
-    update_database()
+        with torch.no_grad():
+            emb = model.get_embedding(face)
+
+        embeddings.append(emb.cpu().numpy()[0])
+
+    if len(embeddings) > 0:
+        embeddings = np.array(embeddings)
+        # mean_embedding = np.mean(embeddings, axis=0)
+        # database[user] = mean_embedding
+        database[user] = np.array(embeddings)
+np.save(SAVE_PATH, database)
+
+print("Saved face database!")
