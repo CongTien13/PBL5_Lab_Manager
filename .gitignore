@@ -1,0 +1,6 @@
+myenv/
+__pycache__/
+*.pyc
+serviceAccountKey.json
+temp_faces/
+weights/face_db.npy
