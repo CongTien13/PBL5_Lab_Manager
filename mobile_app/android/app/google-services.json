@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "737994803810",
+    "project_id": "managerlab-7f578",
+    "storage_bucket": "managerlab-7f578.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:737994803810:android:5a876a65b284df4deb5f3b",
+        "android_client_info": {
+          "package_name": "com.example.lab_manager"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "737994803810-osm19nuplkhma138m1i7sepusg4jnl7h.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBPqh0GWJYyD3xoxQVb5ruUmMa6lyCY9-w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "737994803810-osm19nuplkhma138m1i7sepusg4jnl7h.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:737994803810:android:c1de2d1bd79682e3eb5f3b",
+        "android_client_info": {
+          "package_name": "com.example.smart_lab"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "737994803810-osm19nuplkhma138m1i7sepusg4jnl7h.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBPqh0GWJYyD3xoxQVb5ruUmMa6lyCY9-w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "737994803810-osm19nuplkhma138m1i7sepusg4jnl7h.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
