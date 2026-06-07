@@ -43,6 +43,36 @@ def check_valid_booking(user_id, device_id, check_time=False):
     return None, None
 
 
+def check_all_valid_bookings(user_id, check_time=False):
+    """Check all valid bookings for a user across all devices."""
+    bookings_ref = db.collection("bookings")
+
+    query = (
+        bookings_ref
+        .where("userId", "==", user_id)
+        .where("status", "==", "approved")
+        .stream()
+    )
+
+    now = datetime.now(timezone.utc)
+    valid_bookings = []
+
+    for doc in query:
+        data = doc.to_dict()
+
+        if not check_time:
+            valid_bookings.append((doc.id, data))
+            continue
+
+        start_time = data.get("startTime")
+        end_time = data.get("endTime")
+
+        if start_time and end_time and start_time <= now <= end_time:
+            valid_bookings.append((doc.id, data))
+
+    return valid_bookings
+
+
 def update_device_in_use(device_id, user_id):
     db.collection("devices").document(device_id).update({
         "status": "in_use",

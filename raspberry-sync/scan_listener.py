@@ -17,6 +17,7 @@ from hardware_gpio import (
 from firebase_service import (
     db,
     check_valid_booking,
+    check_all_valid_bookings,
     update_device_in_use,
     update_booking_status,
     update_scan_request,
@@ -165,13 +166,13 @@ def handle_scan_request(doc_id, data):
             print("[DENIED] Face không khớp user bấm quét")
             return
 
-        booking_id, booking_data = check_valid_booking(
+        # Check all valid bookings for this user across all devices
+        valid_bookings = check_all_valid_bookings(
             recognized_user_id,
-            DEVICE_ID,
             check_time=True
         )
 
-        if booking_id is None:
+        if not valid_bookings:
             blink_led(DEVICE_ID)
 
             if not is_hardware_button:
@@ -183,49 +184,46 @@ def handle_scan_request(doc_id, data):
                 })
             print("[DENIED] Không có booking hợp lệ")
             return
- 
-        end_time = booking_data.get("endTime")
 
-        if end_time is None:
-            print("[ERROR] Booking không có endTime")
-            blink_led(DEVICE_ID)
+        print(f"[INFO] Tìm thấy {len(valid_bookings)} booking hợp lệ")
 
-            if not is_hardware_button:
-                update_scan_request(doc_id, {
-                    "status": "error",
-                    "recognizedUserId": recognized_user_id,
-                    "score": score,
-                    "bookingId": booking_id,
-                    "message": "Booking không có endTime"
-                })
-            return
+        # Activate all valid devices
+        for booking_id, booking_data in valid_bookings:
+            device_id = booking_data.get("deviceId")
+            end_time = booking_data.get("endTime")
 
-        update_device_in_use(DEVICE_ID, recognized_user_id)
-        update_booking_status(booking_id, "using")
+            if end_time is None:
+                print(f"[ERROR] Booking {booking_id} không có endTime")
+                continue
+
+            if device_id in active_devices:
+                print(f"[INFO] Device {device_id} đã đang active, bỏ qua")
+                continue
+
+            update_device_in_use(device_id, recognized_user_id)
+            update_booking_status(booking_id, "using")
+
+            active_devices[device_id] = booking_id
+
+            t = threading.Thread(
+                target=monitor_device_until_end,
+                args=(device_id, booking_id, end_time),
+                daemon=True
+            )
+
+            t.start()
+
+            print(f"[AUTHORIZED] Device {device_id} - relay bật tới {end_time}")
 
         if not is_hardware_button:
             update_scan_request(doc_id, {
                 "status": "success",
                 "recognizedUserId": recognized_user_id,
                 "score": score,
-                "bookingId": booking_id,
-                "message": "Xác thực thành công, thiết bị đã được mở"
+                "message": f"Xác thực thành công, {len(valid_bookings)} thiết bị đã được mở"
             })
 
-        print("[AUTHORIZED] Xác thực thành công")
-  
-        if DEVICE_ID not in active_devices:
-            active_devices[DEVICE_ID] = booking_id
-
-            t = threading.Thread(
-                target=monitor_device_until_end,
-                args=(DEVICE_ID, booking_id, end_time),
-                daemon=True
-            )
-
-            t.start()
-
-        print("[AUTHORIZED] Relay sẽ bật tới khi hết giờ booking")
+        print(f"[AUTHORIZED] Tổng cộng {len(valid_bookings)} relay sẽ bật")
 
     except Exception as e:
         print("[ERROR]", e)
