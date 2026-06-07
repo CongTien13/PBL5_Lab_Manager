@@ -87,6 +87,7 @@ class AuthRepository {
             faceImageUrls, // Lưu mảng link Cloudinary vào Firestore
         'embeddingStatus': 'pending',
         'embeddingUpdatedAt': null, 
+        'embeddingCount': 0,
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
