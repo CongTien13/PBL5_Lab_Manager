@@ -55,11 +55,9 @@ lfw
 casia
 weights/face_extractor.keras
 weights/face_db.npy
-serviceAccountKey.json
 casia.rar
 myenv/
 __pycache__/
 *.pyc
-serviceAccountKey.json
 temp_faces/
-weights/face_db.npy
+!raspberry-sync/
