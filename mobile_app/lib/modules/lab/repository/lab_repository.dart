@@ -57,6 +57,49 @@ class LabRepository {
         );
   }
 
+  // Admin: Lấy TẤT CẢ yêu cầu đang chờ (one-time)
+  Future<List<BookingModel>> getPendingBookings() async {
+    final snap = await _service.getCollection('bookings').get();
+    return snap.docs
+        .map((doc) {
+          final data = doc.data();
+          final map = Map<String, dynamic>.from(data as Map);
+          map['id'] = doc.id;
+          return BookingModel.fromJson(map);
+        })
+        .where((b) => b.status == 'pending')
+        .toList();
+  }
+
+  // Admin: Theo dõi TẤT CẢ bookings (all statuses)
+  Stream<List<BookingModel>> watchAllBookings() {
+    return _service
+        .getStream(
+          'bookings',
+          query: (q) => q.orderBy('startTime', descending: true),
+        )
+        .map(
+          (snapshot) => snapshot.docs
+              .map(
+                (doc) => BookingModel.fromJson({...doc.data(), 'id': doc.id}),
+              )
+              .toList(),
+        );
+  }
+
+  // Admin: Lấy TẤT CẢ bookings (one-time)
+  Future<List<BookingModel>> getAllBookings() async {
+    final snap = await _service.getCollection('bookings').get();
+    return snap.docs
+        .map((doc) {
+          final data = doc.data();
+          final map = Map<String, dynamic>.from(data as Map);
+          map['id'] = doc.id;
+          return BookingModel.fromJson(map);
+        })
+        .toList();
+  }
+
   // Admin: Duyệt hoặc Từ chối yêu cầu
   Future<void> updateBookingStatus(String bookingId, String newStatus) {
     return _service.update('bookings', bookingId, {'status': newStatus});

@@ -3,6 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  // Lấy Collection reference (cho one-time reads)
+  CollectionReference getCollection(String path) => _db.collection(path);
+
   // Lấy Stream dữ liệu từ một Collection
   Stream<QuerySnapshot<Map<String, dynamic>>> getStream(
     String path, {

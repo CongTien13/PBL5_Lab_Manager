@@ -9,6 +9,7 @@ part of 'booking_model.dart';
 BookingModel _$BookingModelFromJson(Map<String, dynamic> json) => BookingModel(
   id: json['id'] as String?,
   userId: json['userId'] as String,
+  userName: json['userName'] as String?,
   deviceId: json['deviceId'] as String,
   deviceName: json['deviceName'] as String,
   startTime: BookingModel._fromTimestamp(json['startTime']),
@@ -19,6 +20,7 @@ BookingModel _$BookingModelFromJson(Map<String, dynamic> json) => BookingModel(
 Map<String, dynamic> _$BookingModelToJson(BookingModel instance) =>
     <String, dynamic>{
       'userId': instance.userId,
+      'userName': instance.userName,
       'deviceId': instance.deviceId,
       'deviceName': instance.deviceName,
       'startTime': BookingModel._toTimestamp(instance.startTime),

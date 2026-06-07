@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -7,6 +8,7 @@ import 'core/services/firestore_service.dart';
 import 'modules/auth/presentation/application/cubit/auth_cubit.dart';
 import 'modules/auth/presentation/components/login_page.dart';
 import 'modules/auth/repository/auth_repository.dart';
+import 'modules/common/presentation/components/main_screen.dart';
 import 'modules/home/presentation/application/cubit/device_cubit.dart';
 import 'modules/home/repository/home_repository.dart';
 import 'modules/lab/presentation/application/cubit/admin_booking_cubit.dart';
@@ -23,6 +25,9 @@ void main() async {
   final authRepo = AuthRepository(authService);
   final homeRepo = HomeRepository(firestoreService);
   final labRepo = LabRepository(firestoreService);
+
+  // 2. Kiểm tra phiên đăng nhập hiện tại
+  final currentUser = FirebaseAuth.instance.currentUser;
 
   runApp(
     MultiRepositoryProvider(
@@ -42,14 +47,16 @@ void main() async {
                 AdminBookingCubit(context.read<LabRepository>()),
           ),
         ],
-        child: const MyApp(),
+        child: MyApp(hasExistingSession: currentUser != null),
       ),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool hasExistingSession;
+
+  const MyApp({super.key, required this.hasExistingSession});
 
   @override
   Widget build(BuildContext context) {
@@ -99,9 +106,8 @@ class MyApp extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
       ),
-      // Khi đã bọc ở trên, tất cả các trang con của MaterialApp
-      // đều sẽ tìm thấy AuthCubit
-      home: LoginPage(),
+      // Nếu đã có phiên đăng nhập, chuyển thẳng đến MainScreen
+      home: hasExistingSession ? const MainScreen() : LoginPage(),
     );
   }
 }

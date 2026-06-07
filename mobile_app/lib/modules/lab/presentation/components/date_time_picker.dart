@@ -301,6 +301,7 @@ class _TimeSelector extends StatelessWidget {
   }
 
   Future<void> _showWheelTimePicker(BuildContext context) async {
+    // Show currently selected time in the wheel picker
     final result = await showModalBottomSheet<TimeOfDay>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -331,12 +332,23 @@ class _TimeWheelPickerSheet extends StatefulWidget {
 class _TimeWheelPickerSheetState extends State<_TimeWheelPickerSheet> {
   late int _selectedHour;
   late int _selectedMinute;
+  late FixedExtentScrollController _hourController;
+  late FixedExtentScrollController _minuteController;
 
   @override
   void initState() {
     super.initState();
     _selectedHour = widget.initialTime.hour;
     _selectedMinute = widget.initialTime.minute;
+    _hourController = FixedExtentScrollController(initialItem: _selectedHour);
+    _minuteController = FixedExtentScrollController(initialItem: _selectedMinute);
+  }
+
+  @override
+  void dispose() {
+    _hourController.dispose();
+    _minuteController.dispose();
+    super.dispose();
   }
 
   @override
@@ -380,6 +392,7 @@ class _TimeWheelPickerSheetState extends State<_TimeWheelPickerSheet> {
                   items: List.generate(24, (i) => i),
                   selectedItem: _selectedHour,
                   onChanged: (value) => setState(() => _selectedHour = value),
+                  controller: _hourController,
                 ),
                 const SizedBox(width: 24),
                 _buildWheelColumn(
@@ -388,6 +401,7 @@ class _TimeWheelPickerSheetState extends State<_TimeWheelPickerSheet> {
                   selectedItem: _selectedMinute,
                   format: (i) => i.toString().padLeft(2, '0'),
                   onChanged: (value) => setState(() => _selectedMinute = value),
+                  controller: _minuteController,
                 ),
               ],
             ),
@@ -446,6 +460,7 @@ class _TimeWheelPickerSheetState extends State<_TimeWheelPickerSheet> {
     required int selectedItem,
     String Function(int)? format,
     required ValueChanged<int> onChanged,
+    FixedExtentScrollController? controller,
   }) {
     return Column(
       children: [
@@ -458,6 +473,7 @@ class _TimeWheelPickerSheetState extends State<_TimeWheelPickerSheet> {
           child: SizedBox(
             width: 70,
             child: ListWheelScrollView.useDelegate(
+              controller: controller,
               itemExtent: 50,
               perspective: 0.005,
               diameterRatio: 1.2,

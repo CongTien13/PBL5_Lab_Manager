@@ -1,11 +1,35 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../auth/presentation/application/cubit/auth_cubit.dart';
 import 'settings_page.dart';
 
-class InfoPage extends StatelessWidget {
+class InfoPage extends StatefulWidget {
   const InfoPage({super.key});
+
+  @override
+  State<InfoPage> createState() => _InfoPageState();
+}
+
+class _InfoPageState extends State<InfoPage> {
+  late Future<DocumentSnapshot> _userDataFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _userDataFuture = _getUserData();
+  }
+
+  Future<DocumentSnapshot> _getUserData() async {
+    // Wait for Firebase Auth to be ready
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      // Wait for auth state to restore
+      await FirebaseAuth.instance.authStateChanges().firstWhere((u) => u != null);
+    }
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    return FirebaseFirestore.instance.collection('users').doc(uid).get();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,10 +39,30 @@ class InfoPage extends StatelessWidget {
           gradient: AppTheme.backgroundGradient,
         ),
         child: SafeArea(
-          child: BlocBuilder<AuthCubit, AuthState>(
-            builder: (context, state) {
-              if (state is AuthSuccess) {
-                final user = state.user;
+          child: FutureBuilder<DocumentSnapshot>(
+            future: _userDataFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(color: AppTheme.primaryGradientStart),
+                );
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text("Lỗi: ${snapshot.error}"),
+                );
+              }
+              if (!snapshot.hasData) {
+                return const Center(
+                  child: CircularProgressIndicator(color: AppTheme.primaryGradientStart),
+                );
+              }
+              final userData = snapshot.data!.data() as Map<String, dynamic>?;
+              if (userData == null) {
+                return const Center(
+                  child: Text("Không tìm thấy dữ liệu"),
+                );
+              }
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
                   child: Column(
@@ -64,7 +108,7 @@ class InfoPage extends StatelessWidget {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              user.name,
+                              userData['name'],
                               style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
@@ -82,7 +126,7 @@ class InfoPage extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                user.job ?? 'Người dùng',
+                                userData['job'] ?? 'Người dùng',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Colors.white.withOpacity(0.9),
@@ -113,21 +157,21 @@ class InfoPage extends StatelessWidget {
                             _InfoItem(
                               icon: Icons.phone_outlined,
                               label: "Số điện thoại",
-                              value: user.num,
+                              value: userData['num'],
                               iconColor: AppTheme.primaryGradientStart,
                             ),
                             const Divider(height: 24),
                             _InfoItem(
                               icon: Icons.work_outline,
                               label: "Nghề nghiệp",
-                              value: user.job ?? 'Chưa cập nhật',
+                              value: userData['job'] ?? 'Chưa cập nhật',
                               iconColor: AppTheme.successGreen,
                             ),
                             const Divider(height: 24),
                             _InfoItem(
                               icon: Icons.cake_outlined,
                               label: "Ngày sinh",
-                              value: user.birthday ?? 'Chưa cập nhật',
+                              value: userData['birthday'] ?? 'Chưa cập nhật',
                               iconColor: AppTheme.warningOrange,
                             ),
                           ],
@@ -219,10 +263,6 @@ class InfoPage extends StatelessWidget {
                       ),
                     ],
                   ),
-                );
-              }
-              return const Center(
-                child: CircularProgressIndicator(color: AppTheme.primaryGradientStart),
               );
             },
           ),

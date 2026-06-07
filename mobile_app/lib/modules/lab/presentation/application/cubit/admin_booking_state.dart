@@ -12,9 +12,10 @@ final class AdminBookingLoading extends AdminBookingState {}
 
 final class AdminBookingLoaded extends AdminBookingState {
   final List<BookingModel> pendingBookings;
-  const AdminBookingLoaded(this.pendingBookings);
+  final List<BookingModel> allBookings;
+  const AdminBookingLoaded(this.pendingBookings, this.allBookings);
   @override
-  List<Object> get props => [pendingBookings];
+  List<Object> get props => [pendingBookings, allBookings];
 }
 
 final class AdminBookingError extends AdminBookingState {

@@ -10,13 +10,28 @@ class AdminBookingCubit extends Cubit<AdminBookingState> {
   final LabRepository _repository;
   StreamSubscription? _subscription;
 
-  AdminBookingCubit(this._repository) : super(AdminBookingInitial());
+  AdminBookingCubit(this._repository) : super(AdminBookingLoaded([], []));
 
   void watchPendingBookings() {
-    emit(AdminBookingLoading());
+    emit(AdminBookingLoaded([], []));
     _subscription?.cancel();
     _subscription = _repository.watchAllPendingBookings().listen(
-      (bookings) => emit(AdminBookingLoaded(bookings)),
+      (bookings) async {
+        final all = await _repository.getAllBookings();
+        emit(AdminBookingLoaded(bookings, all));
+      },
+      onError: (error) => emit(AdminBookingError(error.toString())),
+    );
+  }
+
+  void watchAllBookings() {
+    emit(AdminBookingLoaded([], []));
+    _subscription?.cancel();
+    _subscription = _repository.watchAllBookings().listen(
+      (bookings) async {
+        final pending = await _repository.getPendingBookings();
+        emit(AdminBookingLoaded(pending, bookings));
+      },
       onError: (error) => emit(AdminBookingError(error.toString())),
     );
   }

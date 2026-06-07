@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/models/booking_model.dart';
+import '../../../../core/services/user_service.dart';
 import '../../repository/lab_repository.dart';
 
 class DeviceBookingsPage extends StatelessWidget {
@@ -207,12 +208,15 @@ class _BookingCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "Người đặt: ${booking.userId}",
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1E293B),
+                      FutureBuilder<String>(
+                        future: UserService().getUserName(booking.userId),
+                        builder: (ctx, snapshot) => Text(
+                          "Người đặt: ${snapshot.data ?? '...'}",
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1E293B),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 4),

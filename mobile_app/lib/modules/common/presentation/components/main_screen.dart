@@ -1,7 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../auth/presentation/application/cubit/auth_cubit.dart';
 import '../../../home/presentation/components/admin_home_page.dart';
 import '../../../home/presentation/components/home_page.dart';
 import '../../../info/presentation/components/info_page.dart';
@@ -17,15 +17,46 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  String _role = 'user';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserRole();
+  }
+
+  Future<void> _loadUserRole() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      if (mounted) {
+        setState(() {
+          _role = doc.data()?['role'] ?? 'user';
+          _isLoading = false;
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final authState = context.read<AuthCubit>().state;
-    String role = 'user';
-
-    if (authState is AuthSuccess) {
-      role = authState.user.role;
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
     }
+
+    final role = _role;
 
     final List<Widget> pages = role == 'admin'
         ? [

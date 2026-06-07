@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -20,9 +22,17 @@ class _LabPageState extends State<LabPage> {
   @override
   void initState() {
     super.initState();
-    final authState = context.read<AuthCubit>().state;
-    if (authState is AuthSuccess) {
-      context.read<BookingCubit>().watchMyBookings(authState.user.uid);
+    _initBookings();
+  }
+
+  Future<void> _initBookings() async {
+    // Wait for Firebase Auth to be ready
+    var firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser == null) {
+      firebaseUser = await FirebaseAuth.instance.authStateChanges().firstWhere((u) => u != null);
+    }
+    if (firebaseUser != null && mounted) {
+      context.read<BookingCubit>().watchMyBookings(firebaseUser.uid);
     }
   }
 
@@ -233,8 +243,9 @@ class _RegisterTab extends StatelessWidget {
 
     if (result != true) return;
 
-    final authState = context.read<AuthCubit>().state;
-    if (authState is AuthSuccess) {
+    // Use FirebaseAuth directly for user info
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser != null) {
       final start = DateTime(
         selectedDate.year,
         selectedDate.month,
@@ -250,8 +261,16 @@ class _RegisterTab extends StatelessWidget {
         endTime.minute,
       );
 
+      // Lấy tên người dùng từ Firestore
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .get();
+      final userName = userDoc.data()?['name'] as String? ?? 'Người dùng';
+
       final newBooking = BookingModel(
-        userId: authState.user.uid,
+        userId: firebaseUser.uid,
+        userName: userName,
         deviceId: device.id,
         deviceName: device.name,
         startTime: start,

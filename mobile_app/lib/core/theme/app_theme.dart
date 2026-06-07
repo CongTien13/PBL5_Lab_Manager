@@ -43,7 +43,7 @@ class AppTheme {
       case 'using':
         return infoBlue;
       case 'finished':
-        return Colors.grey;
+        return successGreen;
       case 'rejected':
         return errorRed;
       default:

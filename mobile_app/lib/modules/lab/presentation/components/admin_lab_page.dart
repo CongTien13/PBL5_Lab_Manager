@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/services/user_service.dart';
 import '../application/cubit/admin_booking_cubit.dart';
 
 class AdminLabPage extends StatefulWidget {
@@ -11,11 +12,32 @@ class AdminLabPage extends StatefulWidget {
   State<AdminLabPage> createState() => _AdminLabPageState();
 }
 
-class _AdminLabPageState extends State<AdminLabPage> {
+class _AdminLabPageState extends State<AdminLabPage> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
+    // Load pending by default
     context.read<AdminBookingCubit>().watchPendingBookings();
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    if (_tabController.index == 0) {
+      context.read<AdminBookingCubit>().watchPendingBookings();
+    } else {
+      context.read<AdminBookingCubit>().watchAllBookings();
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
@@ -79,49 +101,97 @@ class _AdminLabPageState extends State<AdminLabPage> {
                 ),
               ),
 
+              // Tabs
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: AppTheme.primaryGradientStart,
+                  unselectedLabelColor: Colors.grey,
+                  indicatorColor: AppTheme.primaryGradientStart,
+                  tabs: const [
+                    Tab(text: "Chờ duyệt"),
+                    Tab(text: "Lịch sử"),
+                  ],
+                ),
+              ),
+
               // Content
               Expanded(
-                child: BlocBuilder<AdminBookingCubit, AdminBookingState>(
-                  builder: (context, state) {
-                    if (state is AdminBookingLoading) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color: AppTheme.primaryGradientStart,
-                        ),
-                      );
-                    }
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // Tab 0: Pending
+                    BlocBuilder<AdminBookingCubit, AdminBookingState>(
+                      builder: (context, state) => _buildBookingList(state, 0),
+                    ),
+                    // Tab 1: All History
+                    BlocBuilder<AdminBookingCubit, AdminBookingState>(
+                      builder: (context, state) => _buildBookingList(state, 1),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-                    if (state is AdminBookingLoaded) {
-                      final bookings = state.pendingBookings;
-                      if (bookings.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.check_circle_outline,
-                                size: 80,
-                                color: Colors.grey.shade300,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                "Không có yêu cầu nào đang chờ",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
+  Widget _buildBookingList(AdminBookingState state, int tabIndex) {
+    if (state is AdminBookingLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: AppTheme.primaryGradientStart,
+        ),
+      );
+    }
 
-                      return ListView.builder(
+    if (state is AdminBookingLoaded) {
+      final pending = state.pendingBookings ?? [];
+      final all = state.allBookings ?? [];
+      final bookings = tabIndex == 0 ? pending : all;
+      if (bookings.isEmpty) {
+        final emptyMsg = tabIndex == 0
+            ? "Không có yêu cầu nào đang chờ"
+            : "Không có lịch sử đặt lịch";
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.check_circle_outline,
+                size: 80,
+                color: Colors.grey.shade300,
+              ),
+              SizedBox(height: 16),
+              Text(
+                emptyMsg,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      return ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         itemCount: bookings.length,
                         itemBuilder: (context, index) {
                           final booking = bookings[index];
                           final timeFmt = DateFormat('HH:mm - dd/MM');
+
+                          final status = booking.status;
+                          final isPending = status == 'pending';
+                          final iconColor = isPending
+                              ? AppTheme.warningOrange
+                              : status == 'approved' || status == 'finished'
+                                  ? AppTheme.successGreen
+                                  : AppTheme.errorRed;
 
                           return Container(
                             margin: const EdgeInsets.only(bottom: 16),
@@ -147,12 +217,16 @@ class _AdminLabPageState extends State<AdminLabPage> {
                                       Container(
                                         padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
-                                          color: AppTheme.warningOrange.withOpacity(0.1),
+                                          color: iconColor.withOpacity(0.1),
                                           borderRadius: BorderRadius.circular(10),
                                         ),
-                                        child: const Icon(
-                                          Icons.pending_actions,
-                                          color: AppTheme.warningOrange,
+                                        child: Icon(
+                                          isPending
+                                              ? Icons.pending_actions
+                                              : status == 'approved' || status == 'finished'
+                                                  ? Icons.check_circle
+                                                  : Icons.cancel,
+                                          color: iconColor,
                                           size: 20,
                                         ),
                                       ),
@@ -170,7 +244,7 @@ class _AdminLabPageState extends State<AdminLabPage> {
                                               ),
                                             ),
                                             const SizedBox(height: 4),
-                                            StatusBadge(status: 'pending'),
+                                            StatusBadge(status: status),
                                           ],
                                         ),
                                       ),
@@ -189,10 +263,13 @@ class _AdminLabPageState extends State<AdminLabPage> {
                                     ),
                                     child: Column(
                                       children: [
-                                        _InfoRow(
-                                          icon: Icons.person_outline,
-                                          label: "Người đặt",
-                                          value: booking.userId,
+                                        FutureBuilder<String>(
+                                          future: UserService().getUserName(booking.userId),
+                                          builder: (ctx, snapshot) => _InfoRow(
+                                            icon: Icons.person_outline,
+                                            label: "Người đặt",
+                                            value: snapshot.data ?? '...',
+                                          ),
                                         ),
                                         const SizedBox(height: 8),
                                         _InfoRow(
@@ -203,48 +280,50 @@ class _AdminLabPageState extends State<AdminLabPage> {
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(height: 16),
 
-                                  // Action buttons
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: OutlinedButton.icon(
-                                          onPressed: () => context
-                                              .read<AdminBookingCubit>()
-                                              .processBooking(booking.id!, 'rejected'),
-                                          style: OutlinedButton.styleFrom(
-                                            foregroundColor: AppTheme.errorRed,
-                                            side: const BorderSide(color: AppTheme.errorRed),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(10),
+                                  // Action buttons (only show for pending tab)
+                                  if (tabIndex == 0) ...[
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: OutlinedButton.icon(
+                                            onPressed: () => context
+                                                .read<AdminBookingCubit>()
+                                                .processBooking(booking.id!, 'rejected'),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: AppTheme.errorRed,
+                                              side: const BorderSide(color: AppTheme.errorRed),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
                                             ),
-                                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                            icon: const Icon(Icons.close, size: 18),
+                                            label: const Text("TỪ CHỐI"),
                                           ),
-                                          icon: const Icon(Icons.close, size: 18),
-                                          label: const Text("TỪ CHỐI"),
                                         ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: ElevatedButton.icon(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppTheme.successGreen,
-                                            foregroundColor: Colors.white,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(10),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: ElevatedButton.icon(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: AppTheme.successGreen,
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
                                             ),
-                                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                            onPressed: () => context
+                                                .read<AdminBookingCubit>()
+                                                .processBooking(booking.id!, 'approved'),
+                                            icon: const Icon(Icons.check, size: 18),
+                                            label: const Text("DUYỆT"),
                                           ),
-                                          onPressed: () => context
-                                              .read<AdminBookingCubit>()
-                                              .processBooking(booking.id!, 'approved'),
-                                          icon: const Icon(Icons.check, size: 18),
-                                          label: const Text("DUYỆT"),
                                         ),
-                                      ),
-                                    ],
-                                  ),
+                                      ],
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -252,15 +331,9 @@ class _AdminLabPageState extends State<AdminLabPage> {
                         },
                       );
                     }
-                    return const SizedBox();
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    
+
+    return const SizedBox();
   }
 }
 

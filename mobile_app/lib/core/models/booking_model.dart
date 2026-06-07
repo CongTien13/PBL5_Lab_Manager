@@ -7,6 +7,7 @@ class BookingModel {
   @JsonKey(includeToJson: false)
   final String? id;
   final String userId;
+  final String? userName; // Tên người đặt
   final String deviceId;
   final String deviceName;
   @JsonKey(fromJson: _fromTimestamp, toJson: _toTimestamp)
@@ -18,6 +19,7 @@ class BookingModel {
   BookingModel({
     this.id,
     required this.userId,
+    this.userName,
     required this.deviceId,
     required this.deviceName,
     required this.startTime,
