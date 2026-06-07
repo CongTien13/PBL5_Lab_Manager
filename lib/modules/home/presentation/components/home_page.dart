@@ -391,30 +391,35 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: [
-        Icon(icon, size: 20, color: Colors.grey.shade600),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-              ),
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Icon(icon, size: 20, color: Colors.grey.shade600),
+    const SizedBox(width: 12),
+
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
             ),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: valueColor ?? const Color(0xFF1E293B),
-              ),
+          ),
+          Text(
+            value,
+            softWrap: true,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: valueColor ?? const Color(0xFF1E293B),
             ),
-          ],
-        ),
-      ],
-    );
+          ),
+        ],
+      ),
+    ),
+  ],
+);
   }
 }

@@ -204,7 +204,7 @@ class SettingsPage extends StatelessWidget {
           children: [
             Icon(Icons.help_outline, color: AppTheme.primaryGradientStart),
             SizedBox(width: 8),
-            Text("Hướng dẫn sử dụng"),
+            Text("Hướng dẫn"),
           ],
         ),
         content: const SingleChildScrollView(
