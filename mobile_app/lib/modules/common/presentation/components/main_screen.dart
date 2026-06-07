@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../home/presentation/application/cubit/device_cubit.dart';
 import '../../../home/presentation/components/admin_home_page.dart';
 import '../../../home/presentation/components/home_page.dart';
 import '../../../info/presentation/components/info_page.dart';
@@ -27,6 +29,9 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _loadUserRole() async {
+    // Đợi auth token ready trước khi query Firestore
+    await FirebaseAuth.instance.authStateChanges().first;
+
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       final doc = await FirebaseFirestore.instance
@@ -37,6 +42,10 @@ class _MainScreenState extends State<MainScreen> {
         setState(() {
           _role = doc.data()?['role'] ?? 'user';
           _isLoading = false;
+        });
+        // Gọi watchDevices sau khi auth ready
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          context.read<DeviceCubit>().watchDevices();
         });
       }
     } else {

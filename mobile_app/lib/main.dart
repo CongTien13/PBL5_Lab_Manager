@@ -46,7 +46,7 @@ void main() async {
         providers: [
           BlocProvider(create: (context) => AuthCubit(authRepo)),
           BlocProvider(
-            create: (context) => DeviceCubit(homeRepo)..watchDevices(),
+            create: (context) => DeviceCubit(homeRepo),
           ),
           BlocProvider(create: (context) => BookingCubit(labRepo)),
           BlocProvider(
