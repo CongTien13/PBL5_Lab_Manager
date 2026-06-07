@@ -26,7 +26,14 @@ void main() async {
   final homeRepo = HomeRepository(firestoreService);
   final labRepo = LabRepository(firestoreService);
 
-  // 2. Kiểm tra phiên đăng nhập hiện tại
+  // 2. Đợi auth token ready trước khi chạy app (fix permission denied)
+  // Nếu có user đang login, đợi token ready cho Firestore
+  final currentUserCheck = FirebaseAuth.instance.currentUser;
+  if (currentUserCheck != null) {
+    await currentUserCheck.getIdTokenResult(true); // Force refresh token
+  }
+
+  // 3. Kiểm tra phiên đăng nhập hiện tại
   final currentUser = FirebaseAuth.instance.currentUser;
 
   runApp(

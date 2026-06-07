@@ -74,7 +74,7 @@ class HomePage extends StatelessWidget {
               Expanded(
                 child: BlocBuilder<DeviceCubit, DeviceState>(
                   builder: (context, state) {
-                    if (state is DeviceLoading) {
+                    if (state is DeviceLoading || state is DeviceInitial) {
                       return const Center(
                         child: CircularProgressIndicator(
                           color: AppTheme.primaryGradientStart,

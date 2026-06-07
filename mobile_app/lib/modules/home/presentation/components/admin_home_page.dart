@@ -84,6 +84,14 @@ class AdminHomePage extends StatelessWidget {
                   },
                   child: BlocBuilder<DeviceCubit, DeviceState>(
                     builder: (context, state) {
+                      if (state is DeviceLoading || state is DeviceInitial) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: AppTheme.primaryGradientStart,
+                          ),
+                        );
+                      }
+
                       if (state is DeviceLoaded) {
                         if (state.devices.isEmpty) {
                           return Center(

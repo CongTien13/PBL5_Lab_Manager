@@ -38,6 +38,23 @@ class AdminBookingCubit extends Cubit<AdminBookingState> {
 
   Future<void> processBooking(String id, String status) async {
     try {
+      if (status == 'approved') {
+        // Lấy booking đang được duyệt
+        final allBookings = await _repository.getAllBookings();
+        final booking = allBookings.firstWhere((b) => b.id == id);
+
+        // Kiểm tra xem có booking approved nào bị overlap không
+        final hasConflict = await _repository.hasApprovedConflict(
+          deviceId: booking.deviceId,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+          excludeBookingId: id,
+        );
+        if (hasConflict) {
+          emit(AdminBookingError("Có lịch đặt trùng thời gian cho thiết bị này!"));
+          return;
+        }
+      }
       await _repository.updateBookingStatus(id, status);
     } catch (e) {
       emit(AdminBookingError(e.toString()));

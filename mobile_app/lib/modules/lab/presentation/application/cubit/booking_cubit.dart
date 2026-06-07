@@ -26,6 +26,20 @@ class BookingCubit extends Cubit<BookingState> {
     }
   }
 
+  Future<bool> checkConflict(
+    String userId,
+    String deviceId,
+    DateTime startTime,
+    DateTime endTime,
+  ) async {
+    return _repository.hasConflictingBooking(
+      userId: userId,
+      deviceId: deviceId,
+      startTime: startTime,
+      endTime: endTime,
+    );
+  }
+
   void watchMyBookings(String userId) {
     _subscription?.cancel();
     _subscription = _repository.watchMyBookings(userId).listen((bookings) {

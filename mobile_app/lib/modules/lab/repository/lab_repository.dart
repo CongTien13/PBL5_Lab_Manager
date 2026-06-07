@@ -120,4 +120,77 @@ class LabRepository {
               .toList(),
         );
   }
+
+  // Kiểm tra xem user đã có booking trùng thời gian cho cùng thiết bị chưa
+  Future<bool> hasConflictingBooking({
+    required String userId,
+    required String deviceId,
+    required DateTime startTime,
+    required DateTime endTime,
+  }) async {
+    final snap = await _service.getCollection('bookings').get();
+    final bookings = snap.docs
+        .map((doc) {
+          final data = doc.data();
+          final map = Map<String, dynamic>.from(data as Map);
+          map['id'] = doc.id;
+          return BookingModel.fromJson(map);
+        })
+        .where((b) =>
+            b.userId == userId &&
+            b.deviceId == deviceId &&
+            (b.status == 'pending' || b.status == 'approved'))
+        .toList();
+
+    // Kiểm tra xem có thời gian overlap không
+    for (final booking in bookings) {
+      if (_timesOverlap(
+        startTime,
+        endTime,
+        booking.startTime,
+        booking.endTime,
+      )) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Kiểm tra xem có booking nào (của bất kỳ user nào) đã được duyệt trùng thời gian cho thiết bị chưa
+  Future<bool> hasApprovedConflict({
+    required String deviceId,
+    required DateTime startTime,
+    required DateTime endTime,
+    String? excludeBookingId,
+  }) async {
+    final snap = await _service.getCollection('bookings').get();
+    final bookings = snap.docs
+        .map((doc) {
+          final data = doc.data();
+          final map = Map<String, dynamic>.from(data as Map);
+          map['id'] = doc.id;
+          return BookingModel.fromJson(map);
+        })
+        .where((b) =>
+            b.deviceId == deviceId &&
+            b.status == 'approved' &&
+            (excludeBookingId == null || b.id != excludeBookingId))
+        .toList();
+
+    for (final booking in bookings) {
+      if (_timesOverlap(
+        startTime,
+        endTime,
+        booking.startTime,
+        booking.endTime,
+      )) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _timesOverlap(DateTime start1, DateTime end1, DateTime start2, DateTime end2) {
+    return start1.isBefore(end2) && end1.isAfter(start2);
+  }
 }

@@ -268,6 +268,25 @@ class _RegisterTab extends StatelessWidget {
           .get();
       final userName = userDoc.data()?['name'] as String? ?? 'Người dùng';
 
+      // Kiểm tra trùng lịch
+      final hasConflict = await context.read<BookingCubit>().checkConflict(
+        firebaseUser.uid,
+        device.id,
+        start,
+        end,
+      );
+      if (hasConflict) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text("Bạn đã có lịch đặt cho thiết bị này trong khung giờ này rồi!"),
+              backgroundColor: AppTheme.errorRed,
+            ),
+          );
+        }
+        return;
+      }
+
       final newBooking = BookingModel(
         userId: firebaseUser.uid,
         userName: userName,

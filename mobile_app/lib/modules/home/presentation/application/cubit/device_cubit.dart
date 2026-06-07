@@ -17,6 +17,7 @@ class DeviceCubit extends Cubit<DeviceState> {
 
   void watchDevices() {
     _subscription?.cancel();
+    emit(DeviceLoading()); // Show loading immediately
     _subscription = _repository.watchDevices().listen((devices) {
       _cachedDevices = devices; // Cập nhật bộ nhớ tạm
       emit(DeviceLoaded(devices));

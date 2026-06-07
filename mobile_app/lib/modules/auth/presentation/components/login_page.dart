@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../common/presentation/components/main_screen.dart';
@@ -26,16 +27,24 @@ class LoginPage extends StatelessWidget {
           ),
         ),
         child: BlocConsumer<AuthCubit, AuthState>(
-          listener: (context, state) {
+          listener: (context, state) async {
             if (state is AuthSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text("Chào mừng ${state.user.name}!")),
               );
 
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const MainScreen()),
-              );
+              // Đợi auth token ready trước khi chuyển trang (fix permission denied)
+              final firebaseUser = FirebaseAuth.instance.currentUser;
+              if (firebaseUser != null) {
+                await firebaseUser.getIdTokenResult(true);
+              }
+
+              if (context.mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MainScreen()),
+                );
+              }
             }
           },
           builder: (context, state) {
