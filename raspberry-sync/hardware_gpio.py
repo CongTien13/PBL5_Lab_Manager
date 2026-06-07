@@ -5,17 +5,17 @@ BUTTON_PIN = 17
 
 DEVICE_CONFIG = {
     "dev01": {
-        "relay": 27,
+        "relay": 27,   # Pin 13
         "led": 22,
         "name": "Máy in 3D Ender 3"
     },
     "dev02": {
-        "relay": 5,
+        "relay": 23,   # Pin 16
         "led": 23,
         "name": "Kính hiển vi"
     },
     "dev03": {
-        "relay": 6,
+        "relay": 24,   # Pin 18
         "led": 24,
         "name": "Trạm hàn"
     },
@@ -35,7 +35,6 @@ for device_id, cfg in DEVICE_CONFIG.items():
 
     GPIO.output(cfg["relay"], RELAY_OFF)
     GPIO.output(cfg["led"], GPIO.LOW)
-
 
 def is_button_pressed():
     return GPIO.input(BUTTON_PIN) == GPIO.LOW
@@ -73,12 +72,12 @@ def blink_led(device_id, times=5, delay=0.2):
     if cfg is None:
         return
 
-    pin = cfg["led"]
+    led_pin = cfg["led"]
 
     for _ in range(times):
-        GPIO.output(pin, GPIO.HIGH)
+        GPIO.output(led_pin, GPIO.HIGH)
         time.sleep(delay)
-        GPIO.output(pin, GPIO.LOW)
+        GPIO.output(led_pin, GPIO.LOW)
         time.sleep(delay)
 
 

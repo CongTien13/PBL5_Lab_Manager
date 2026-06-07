@@ -57,6 +57,54 @@ def monitor_device_until_end(device_id, booking_id, end_time):
         time.sleep(1)
 
 
+def restore_active_devices():
+    print("[RESTORE] Checking active devices...")
+
+    docs = (
+        db.collection("bookings")
+        .where("deviceId", "==", DEVICE_ID)
+        .where("status", "==", "using")
+        .stream()
+    )
+
+    found = False
+
+    for doc in docs:
+        found = True
+
+        booking_data = doc.to_dict()
+        booking_id = doc.id
+        end_time = booking_data.get("endTime")
+
+        if end_time is None:
+            continue
+
+        now = datetime.now(timezone.utc)
+
+        # nếu còn thời gian sử dụng
+        if now < end_time:
+            print(f"[RESTORE] Resume booking {booking_id}")
+
+            active_devices[DEVICE_ID] = booking_id
+
+            t = threading.Thread(
+                target=monitor_device_until_end,
+                args=(DEVICE_ID, booking_id, end_time),
+                daemon=True
+            )
+            t.start()
+
+        else:
+            print(f"[RESTORE] Booking hết giờ -> cleanup")
+
+            finish_booking_and_release_device(
+                booking_id,
+                DEVICE_ID
+            )
+
+    if not found:
+        print("[RESTORE] Không có device đang using")
+
 def handle_scan_request(doc_id, data):
     global is_scanning
 
@@ -215,10 +263,13 @@ def on_snapshot(col_snapshot, changes, read_time):
         handle_scan_request(doc.id, data)
 
 
+
 def main():
     print("[LISTENER] Raspberry scan listener started")
     print("[LISTENER] Waiting scanRequests or button press...")
     print("DEVICE_ID:", DEVICE_ID)
+
+    restore_active_devices()
 
     query = (
         db.collection("scanRequests")
@@ -248,4 +299,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("[STOP] Đang tắt chương trình...")
+        cleanup_gpio()
