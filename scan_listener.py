@@ -69,6 +69,7 @@ def handle_scan_request(doc_id, data):
     try:
         request_user_id = data.get("userId")
         device_id = data.get("deviceId")
+        is_hardware_button = doc_id == "hardware-button"
 
         print("\n========== NEW SCAN REQUEST ==========")
         print("Request ID:", doc_id)
@@ -79,22 +80,23 @@ def handle_scan_request(doc_id, data):
             print("[SKIP] Request không thuộc thiết bị này")
             return
 
-        update_scan_request(doc_id, {
-            "status": "scanning",
-            "message": "Raspberry đang quét khuôn mặt"
-        })
-
+        if not is_hardware_button:
+            update_scan_request(doc_id, {
+                "status": "scanning",
+                "message": "Raspberry đang quét khuôn mặt"
+            })
         scan_result = scan_face_once()
 
         if not scan_result["success"]:
             blink_led(DEVICE_ID)
 
-            update_scan_request(doc_id, {
-                "status": "failed",
-                "recognizedUserId": None,
-                "score": None,
-                "message": scan_result["message"]
-            })
+            if not is_hardware_button:
+                update_scan_request(doc_id, {
+                    "status": "failed",
+                    "recognizedUserId": None,
+                    "score": None,
+                    "message": scan_result["message"]
+                })
             return
 
         recognized_user_id = scan_result["userId"]
@@ -103,14 +105,15 @@ def handle_scan_request(doc_id, data):
         print("[INFO] Recognized user:", recognized_user_id)
         print("[INFO] Checking booking...")
 
-        if recognized_user_id != request_user_id:
+        if request_user_id is not None and recognized_user_id != request_user_id:
             blink_led(DEVICE_ID)
-            update_scan_request(doc_id, {
-                "status": "denied",
-                "recognizedUserId": recognized_user_id,
-                "score": score,
-                "message": "Khuôn mặt không khớp với tài khoản đang yêu cầu"
-            })
+            if not is_hardware_button:
+                update_scan_request(doc_id, {
+                    "status": "denied",
+                    "recognizedUserId": recognized_user_id,
+                    "score": score,
+                    "message": "Khuôn mặt không khớp với tài khoản đang yêu cầu"
+                })
             print("[DENIED] Face không khớp user bấm quét")
             return
 
@@ -123,12 +126,13 @@ def handle_scan_request(doc_id, data):
         if booking_id is None:
             blink_led(DEVICE_ID)
 
-            update_scan_request(doc_id, {
-                "status": "denied",
-                "recognizedUserId": recognized_user_id,
-                "score": score,
-                "message": "Không có lịch đặt hợp lệ"
-            })
+            if not is_hardware_button:
+                update_scan_request(doc_id, {
+                    "status": "denied",
+                    "recognizedUserId": recognized_user_id,
+                    "score": score,
+                    "message": "Không có lịch đặt hợp lệ"
+                })
             print("[DENIED] Không có booking hợp lệ")
             return
  
@@ -138,25 +142,27 @@ def handle_scan_request(doc_id, data):
             print("[ERROR] Booking không có endTime")
             blink_led(DEVICE_ID)
 
-            update_scan_request(doc_id, {
-                "status": "error",
-                "recognizedUserId": recognized_user_id,
-                "score": score,
-                "bookingId": booking_id,
-                "message": "Booking không có endTime"
-            })
+            if not is_hardware_button:
+                update_scan_request(doc_id, {
+                    "status": "error",
+                    "recognizedUserId": recognized_user_id,
+                    "score": score,
+                    "bookingId": booking_id,
+                    "message": "Booking không có endTime"
+                })
             return
 
         update_device_in_use(DEVICE_ID, recognized_user_id)
         update_booking_status(booking_id, "using")
 
-        update_scan_request(doc_id, {
-            "status": "success",
-            "recognizedUserId": recognized_user_id,
-            "score": score,
-            "bookingId": booking_id,
-            "message": "Xác thực thành công, thiết bị đã được mở"
-        })
+        if not is_hardware_button:
+            update_scan_request(doc_id, {
+                "status": "success",
+                "recognizedUserId": recognized_user_id,
+                "score": score,
+                "bookingId": booking_id,
+                "message": "Xác thực thành công, thiết bị đã được mở"
+            })
 
         print("[AUTHORIZED] Xác thực thành công")
   
@@ -176,10 +182,11 @@ def handle_scan_request(doc_id, data):
     except Exception as e:
         print("[ERROR]", e)
 
-        update_scan_request(doc_id, {
-            "status": "error",
-            "message": str(e)
-        })
+        if not is_hardware_button:
+            update_scan_request(doc_id, {
+                "status": "error",
+                "message": str(e)
+            })
 
     finally:
         is_scanning = False
@@ -210,7 +217,7 @@ def on_snapshot(col_snapshot, changes, read_time):
 
 def main():
     print("[LISTENER] Raspberry scan listener started")
-    print("[LISTENER] Waiting scanRequests...")
+    print("[LISTENER] Waiting scanRequests or button press...")
     print("DEVICE_ID:", DEVICE_ID)
 
     query = (
@@ -221,8 +228,23 @@ def main():
 
     query.on_snapshot(on_snapshot)
 
+    last_press = 0
+
     while True:
-        time.sleep(1)
+        if is_button_pressed():
+            now = time.time()
+
+            if now - last_press > 2:
+                print("[BUTTON] Nút được bấm, bắt đầu quét")
+
+                handle_scan_request("hardware-button", {
+                    "userId": None,
+                    "deviceId": DEVICE_ID
+                })
+
+                last_press = now
+
+        time.sleep(0.1)
 
 
 if __name__ == "__main__":
