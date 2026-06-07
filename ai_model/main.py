@@ -3,8 +3,8 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 
-from models.face_model import FaceModel
-from services.face_detector import FaceDetector
+from ai_model.models.face_model import FaceModel
+from ai_model.services.face_detector import FaceDetector
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MODEL_PATH = "weights/last_checkpoint.pth"
