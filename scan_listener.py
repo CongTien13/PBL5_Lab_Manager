@@ -2,19 +2,59 @@ import time
 from firebase_admin import firestore
 
 from main import scan_face_once
+
+import threading
+from datetime import datetime, timezone
+
+from hardware_gpio import (
+    is_button_pressed,
+    relay_on,
+    relay_off,
+    blink_led,
+    cleanup_gpio
+)
+
 from firebase_service import (
     db,
     check_valid_booking,
     update_device_in_use,
     update_booking_status,
-    update_scan_request
+    update_scan_request,
+    finish_booking_and_release_device
 )
-
 
 DEVICE_ID = "dev01"
 
 is_scanning = False
 processed_requests = set()
+
+
+
+active_devices = {}
+
+
+def monitor_device_until_end(device_id, booking_id, end_time):
+    print(f"[MONITOR] {device_id} sẽ bật tới {end_time}")
+
+    relay_on(device_id)
+
+    while True:
+        now = datetime.now(timezone.utc)
+
+        if now >= end_time:
+            print(f"[MONITOR] {device_id} hết giờ, tắt relay")
+
+            relay_off(device_id)
+
+            finish_booking_and_release_device(
+                booking_id,
+                device_id
+            )
+
+            active_devices.pop(device_id, None)
+            break
+
+        time.sleep(1)
 
 
 def handle_scan_request(doc_id, data):
@@ -47,6 +87,8 @@ def handle_scan_request(doc_id, data):
         scan_result = scan_face_once()
 
         if not scan_result["success"]:
+            blink_led(DEVICE_ID)
+
             update_scan_request(doc_id, {
                 "status": "failed",
                 "recognizedUserId": None,
@@ -62,6 +104,7 @@ def handle_scan_request(doc_id, data):
         print("[INFO] Checking booking...")
 
         if recognized_user_id != request_user_id:
+            blink_led(DEVICE_ID)
             update_scan_request(doc_id, {
                 "status": "denied",
                 "recognizedUserId": recognized_user_id,
@@ -74,10 +117,12 @@ def handle_scan_request(doc_id, data):
         booking_id, booking_data = check_valid_booking(
             recognized_user_id,
             DEVICE_ID,
-            check_time=False
+            check_time=True
         )
 
         if booking_id is None:
+            blink_led(DEVICE_ID)
+
             update_scan_request(doc_id, {
                 "status": "denied",
                 "recognizedUserId": recognized_user_id,
@@ -85,6 +130,21 @@ def handle_scan_request(doc_id, data):
                 "message": "Không có lịch đặt hợp lệ"
             })
             print("[DENIED] Không có booking hợp lệ")
+            return
+ 
+        end_time = booking_data.get("endTime")
+
+        if end_time is None:
+            print("[ERROR] Booking không có endTime")
+            blink_led(DEVICE_ID)
+
+            update_scan_request(doc_id, {
+                "status": "error",
+                "recognizedUserId": recognized_user_id,
+                "score": score,
+                "bookingId": booking_id,
+                "message": "Booking không có endTime"
+            })
             return
 
         update_device_in_use(DEVICE_ID, recognized_user_id)
@@ -99,7 +159,19 @@ def handle_scan_request(doc_id, data):
         })
 
         print("[AUTHORIZED] Xác thực thành công")
-        print("[RELAY] Tới đây bật relay GPIO")
+  
+        if DEVICE_ID not in active_devices:
+            active_devices[DEVICE_ID] = booking_id
+
+            t = threading.Thread(
+                target=monitor_device_until_end,
+                args=(DEVICE_ID, booking_id, end_time),
+                daemon=True
+            )
+
+            t.start()
+
+        print("[AUTHORIZED] Relay sẽ bật tới khi hết giờ booking")
 
     except Exception as e:
         print("[ERROR]", e)

@@ -50,7 +50,6 @@ def update_device_in_use(device_id, user_id):
         "updatedAt": firestore.SERVER_TIMESTAMP
     })
 
-
 def update_device_ready(device_id):
     db.collection("devices").document(device_id).update({
         "status": "ready",
@@ -73,6 +72,31 @@ def update_scan_request(request_id, data):
         "updatedAt": firestore.SERVER_TIMESTAMP
     })
 
+def get_booking_by_id(booking_id):
+    doc = db.collection("bookings").document(booking_id).get()
+
+    if not doc.exists:
+        return None
+
+    data = doc.to_dict()
+    data["id"] = doc.id
+
+    return data
+
+
+def finish_booking_and_release_device(booking_id, device_id):
+    db.collection("bookings").document(booking_id).update({
+        "status": "finished",
+        "finishedAt": firestore.SERVER_TIMESTAMP,
+        "updatedAt": firestore.SERVER_TIMESTAMP
+    })
+
+    db.collection("devices").document(device_id).update({
+        "status": "ready",
+        "currentUserId": None,
+        "currentUserName": None,
+        "updatedAt": firestore.SERVER_TIMESTAMP
+    })
 
 if __name__ == "__main__":
     print("[TEST] Firebase connected OK")
