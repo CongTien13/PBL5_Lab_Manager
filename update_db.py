@@ -91,7 +91,7 @@ def main():
             print(f"[SKIP USER] {uid} - {name}: không có faceImageUrls")
             continue
 
-        person_key = make_person_key(name, uid)
+        person_key = uid
 
         print(f"\n[USER] {person_key} ({name})")
         embeddings = []

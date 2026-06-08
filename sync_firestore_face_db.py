@@ -21,7 +21,7 @@ SERVICE_ACCOUNT = "serviceAccountKey.json"
 TEMP_DIR = "temp_faces"
 
 # Raspberry config
-RASPBERRY_HOST = "172.20.10.2"
+RASPBERRY_HOST = "raspberrypi.local"
 RASPBERRY_PORT = 22
 RASPBERRY_USER = "pi"
 RASPBERRY_PASSWORD = "12345678"
