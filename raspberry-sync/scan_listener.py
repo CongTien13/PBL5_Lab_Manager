@@ -11,7 +11,8 @@ from hardware_gpio import (
     relay_on,
     relay_off,
     blink_led,
-    cleanup_gpio
+    cleanup_gpio,
+    DEVICE_CONFIG
 )
 
 from firebase_service import (
@@ -24,7 +25,8 @@ from firebase_service import (
     finish_booking_and_release_device
 )
 
-DEVICE_ID = "dev01"
+# Support all 3 devices
+SUPPORTED_DEVICES = list(DEVICE_CONFIG.keys())
 
 is_scanning = False
 processed_requests = set()
@@ -38,6 +40,8 @@ def monitor_device_until_end(device_id, booking_id, end_time):
     print(f"[MONITOR] {device_id} sẽ bật tới {end_time}")
 
     relay_on(device_id)
+
+    last_warn_log = False
 
     while True:
         now = datetime.now(timezone.utc)
@@ -55,53 +59,66 @@ def monitor_device_until_end(device_id, booking_id, end_time):
             active_devices.pop(device_id, None)
             break
 
+        # Blink LED when 10 minutes remaining
+        diff = end_time - now
+        mins_left = diff.total_seconds() / 60
+
+        if mins_left <= 10:
+            if not last_warn_log:
+                print(f"[WARN] {device_id}: Còn 10 phút!")
+                last_warn_log = True
+            blink_led(device_id, times=1, delay=0.3)
+        else:
+            last_warn_log = False
+
         time.sleep(1)
 
 
 def restore_active_devices():
     print("[RESTORE] Checking active devices...")
 
-    docs = (
-        db.collection("bookings")
-        .where("deviceId", "==", DEVICE_ID)
-        .where("status", "==", "using")
-        .stream()
-    )
-
     found = False
 
-    for doc in docs:
-        found = True
+    for device_id in SUPPORTED_DEVICES:
+        docs = (
+            db.collection("bookings")
+            .where("deviceId", "==", device_id)
+            .where("status", "==", "using")
+            .stream()
+        )
 
-        booking_data = doc.to_dict()
-        booking_id = doc.id
-        end_time = booking_data.get("endTime")
+        for doc in docs:
+            found = True
 
-        if end_time is None:
-            continue
+            booking_data = doc.to_dict()
+            booking_id = doc.id
+            end_time = booking_data.get("endTime")
 
-        now = datetime.now(timezone.utc)
+            if end_time is None:
+                continue
 
-        # nếu còn thời gian sử dụng
-        if now < end_time:
-            print(f"[RESTORE] Resume booking {booking_id}")
+            now = datetime.now(timezone.utc)
 
-            active_devices[DEVICE_ID] = booking_id
+            # nếu còn thời gian sử dụng
+            if now < end_time:
+                print(f"[RESTORE] Resume booking {booking_id} for {device_id}")
 
-            t = threading.Thread(
-                target=monitor_device_until_end,
-                args=(DEVICE_ID, booking_id, end_time),
-                daemon=True
-            )
-            t.start()
+                active_devices[device_id] = booking_id
 
-        else:
-            print(f"[RESTORE] Booking hết giờ -> cleanup")
+                t = threading.Thread(
+                    target=monitor_device_until_end,
+                    args=(device_id, booking_id, end_time),
+                    daemon=True
+                )
+                t.start()
 
-            finish_booking_and_release_device(
-                booking_id,
-                DEVICE_ID
-            )
+            else:
+                print(f"[RESTORE] Booking hết giờ -> cleanup")
+
+                finish_booking_and_release_device(
+                    booking_id,
+                    device_id
+                )
 
     if not found:
         print("[RESTORE] Không có device đang using")
@@ -125,8 +142,9 @@ def handle_scan_request(doc_id, data):
         print("Request userId:", request_user_id)
         print("Device ID:", device_id)
 
-        if device_id != DEVICE_ID:
-            print("[SKIP] Request không thuộc thiết bị này")
+        # Support all devices
+        if device_id not in SUPPORTED_DEVICES:
+            print("[SKIP] Request không thuộc thiết bị được hỗ trợ")
             return
 
         if not is_hardware_button:
@@ -137,7 +155,7 @@ def handle_scan_request(doc_id, data):
         scan_result = scan_face_once()
 
         if not scan_result["success"]:
-            blink_led(DEVICE_ID)
+            blink_led(device_id)
 
             if not is_hardware_button:
                 update_scan_request(doc_id, {
@@ -155,7 +173,7 @@ def handle_scan_request(doc_id, data):
         print("[INFO] Checking booking...")
 
         if request_user_id is not None and recognized_user_id != request_user_id:
-            blink_led(DEVICE_ID)
+            blink_led(device_id)
             if not is_hardware_button:
                 update_scan_request(doc_id, {
                     "status": "denied",
@@ -173,7 +191,7 @@ def handle_scan_request(doc_id, data):
         )
 
         if not valid_bookings:
-            blink_led(DEVICE_ID)
+            blink_led(device_id)
 
             if not is_hardware_button:
                 update_scan_request(doc_id, {
@@ -250,7 +268,8 @@ def on_snapshot(col_snapshot, changes, read_time):
         if doc.id in processed_requests:
             continue
 
-        if data.get("deviceId") != DEVICE_ID:
+        device_id = data.get("deviceId")
+        if device_id not in SUPPORTED_DEVICES:
             continue
 
         if data.get("status") != "pending":
@@ -265,17 +284,18 @@ def on_snapshot(col_snapshot, changes, read_time):
 def main():
     print("[LISTENER] Raspberry scan listener started")
     print("[LISTENER] Waiting scanRequests or button press...")
-    print("DEVICE_ID:", DEVICE_ID)
+    print("SUPPORTED_DEVICES:", SUPPORTED_DEVICES)
 
     restore_active_devices()
 
-    query = (
-        db.collection("scanRequests")
-        .where("deviceId", "==", DEVICE_ID)
-        .where("status", "==", "pending")
-    )
-
-    query.on_snapshot(on_snapshot)
+    # Listen for scan requests on all supported devices
+    for device_id in SUPPORTED_DEVICES:
+        query = (
+            db.collection("scanRequests")
+            .where("deviceId", "==", device_id)
+            .where("status", "==", "pending")
+        )
+        query.on_snapshot(on_snapshot)
 
     last_press = 0
 
@@ -286,9 +306,10 @@ def main():
             if now - last_press > 2:
                 print("[BUTTON] Nút được bấm, bắt đầu quét")
 
+                # For hardware button, cycle through devices or use dev01
                 handle_scan_request("hardware-button", {
                     "userId": None,
-                    "deviceId": DEVICE_ID
+                    "deviceId": SUPPORTED_DEVICES[0]
                 })
 
                 last_press = now

@@ -1,21 +1,21 @@
 import time
 import RPi.GPIO as GPIO
 
-BUTTON_PIN = 17
+BUTTON_PIN = 26
 
 DEVICE_CONFIG = {
     "dev01": {
-        "relay": 27,   # Pin 13
-        "led": 22,
+        "relay": 17,   # Pin 13
+        "led": 18,
         "name": "Máy in 3D Ender 3"
     },
     "dev02": {
-        "relay": 23,   # Pin 16
+        "relay": 27,   # Pin 16
         "led": 23,
         "name": "Kính hiển vi"
     },
     "dev03": {
-        "relay": 24,   # Pin 18
+        "relay": 22,   # Pin 18
         "led": 24,
         "name": "Trạm hàn"
     },

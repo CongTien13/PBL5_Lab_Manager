@@ -16,7 +16,7 @@ FACE_DB_PATH = os.path.join(BASE_DIR, "weights", "face_db.npy")
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-THRESHOLD = 0.05
+THRESHOLD = 0.5
 SCAN_SECONDS = 8
 
 
@@ -35,6 +35,10 @@ detector = FaceDetector(DEVICE)
 
 db = np.load(FACE_DB_PATH, allow_pickle=True).item()
 
+
+print("[DEBUG] DB type:", type(db))
+print("[DEBUG] DB len:", len(db))
+print("[DEBUG] DB keys:", list(db.keys()))
 db_tensor = {}
 
 print("\n========== FACE DB ==========")
