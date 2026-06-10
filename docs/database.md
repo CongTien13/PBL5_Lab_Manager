@@ -121,7 +121,7 @@ bookings/{bookingId}
 | Field | Type | Description |
 |-------|------|-------------|
 | userId | string | User UID |
-| userName | string | User name |
+| userName | string | User's full name |
 | deviceId | string | Device ID |
 | deviceName | string | Device name |
 | startTime | timestamp | Booking start time (UTC) |
@@ -129,7 +129,7 @@ bookings/{bookingId}
 | status | string | "pending", "approved", "using", "finished", "cancelled" |
 | createdAt | timestamp | Booking creation time |
 | updatedAt | timestamp | Last update time |
-| approvedAt | timestamp | Approval time |
+| approvedAt | timestamp | Admin approval time |
 | finishedAt | timestamp | Completion time |
 
 ### Booking Status Flow

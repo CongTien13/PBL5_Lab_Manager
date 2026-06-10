@@ -17,32 +17,34 @@ The Raspberry Pi station runs hardware control and face recognition scanning. It
 
 | GPIO Pin | Function | Device | Notes |
 |----------|----------|--------|-------|
-| 17 | Input | Scan Button | Active low (pull-up) |
-| 22 | Output | LED (dev01) | Status indicator |
+| 26 | Input | Scan Button | Active low (pull-up) |
+| 18 | Output | LED (dev01) | Status indicator |
 | 23 | Output | LED (dev02) | Status indicator |
 | 24 | Output | LED (dev03) | Status indicator |
-| 27 | Output | Relay (dev01) | Ender 3 power |
-| 5 | Output | Relay (dev02) | Microscope power |
-| 6 | Output | Relay (dev03) | Soldering station power |
+| 17 | Output | Relay (dev01) | Ender 3 power |
+| 27 | Output | Relay (dev02) | Microscope power |
+| 22 | Output | Relay (dev03) | Soldering station power |
 
 ### Device Configuration
 
 ```python
 # From raspberry-sync/hardware_gpio.py
 
+BUTTON_PIN = 26
+
 DEVICE_CONFIG = {
     "dev01": {
-        "relay": 27,
-        "led": 22,
+        "relay": 17,
+        "led": 18,
         "name": "Máy in 3D Ender 3"
     },
     "dev02": {
-        "relay": 5,
+        "relay": 27,
         "led": 23,
         "name": "Kính hiển vi"
     },
     "dev03": {
-        "relay": 6,
+        "relay": 22,
         "led": 24,
         "name": "Trạm hàn"
     },
@@ -149,47 +151,70 @@ def on_snapshot(col_snapshot, changes, read_time):
 
 ```python
 def handle_scan_request(doc_id, data):
-    """Process scan request"""
+    """Process scan request
+
+    Supports multi-device activation - a single face scan can activate
+    all devices that the user has valid bookings for.
+    """
     request_user_id = data.get("userId")
     device_id = data.get("deviceId")
+    is_hardware_button = doc_id == "hardware-button"
 
     # 1. Perform face scan
     scan_result = scan_face_once()
 
-    # 2. Check if face matches request user
-    if request_user_id and recognized_user_id != request_user_id:
-        # Face doesn't match - denied
-        blink_led(DEVICE_ID)
+    if not scan_result["success"]:
+        blink_led(device_id)
         return
 
-    # 3. Check for valid booking
-    booking_id, booking_data = check_valid_booking(
+    recognized_user_id = scan_result["userId"]
+    score = scan_result["score"]
+
+    # 2. Check if face matches request user (if specified)
+    if request_user_id is not None and recognized_user_id != request_user_id:
+        blink_led(device_id)
+        return
+
+    # 3. Check all valid bookings for this user across all devices
+    valid_bookings = check_all_valid_bookings(
         recognized_user_id,
-        DEVICE_ID,
         check_time=True
     )
 
-    if booking_id is None:
-        # No valid booking - denied
-        blink_led(DEVICE_ID)
+    if not valid_bookings:
+        blink_led(device_id)
         return
 
-    # 4. Turn on relay
-    relay_on(DEVICE_ID)
+    # 4. Activate all valid devices
+    for booking_id, booking_data in valid_bookings:
+        device_id = booking_data.get("deviceId")
+        end_time = booking_data.get("endTime")
 
-    # 5. Start monitoring thread
-    monitor_device_until_end(DEVICE_ID, booking_id, end_time)
+        update_device_in_use(device_id, recognized_user_id)
+        update_booking_status(booking_id, "using")
+
+        # Start monitoring thread
+        monitor_device_until_end(device_id, booking_id, end_time)
 ```
 
 **Hardware Button Support**:
 
 ```python
+# Button pin changed to GPIO 26
+BUTTON_PIN = 26
+
+# Button debounce: 2 second cooldown
+last_press = 0
+
 while True:
     if is_button_pressed():
-        handle_scan_request("hardware-button", {
-            "userId": None,
-            "deviceId": DEVICE_ID
-        })
+        now = time.time()
+        if now - last_press > 2:
+            handle_scan_request("hardware-button", {
+                "userId": None,
+                "deviceId": SUPPORTED_DEVICES[0]
+            })
+            last_press = now
     time.sleep(0.1)
 ```
 
@@ -248,12 +273,16 @@ Firestore operations for the Raspberry Pi.
 
 ```python
 def check_valid_booking(user_id, device_id, check_time=False):
-    """Check if user has valid booking for device"""
-    query = db.collection("bookings")\
-        .where("userId", "==", user_id)\
-        .where("deviceId", "==", device_id)\
-        .where("status", "==", "approved")\
+    """Check if user has valid booking for specific device"""
+    bookings_ref = db.collection("bookings")
+
+    query = (
+        bookings_ref
+        .where("userId", "==", user_id)
+        .where("deviceId", "==", device_id)
+        .where("status", "==", "approved")
         .stream()
+    )
 
     now = datetime.now(timezone.utc)
 
@@ -270,21 +299,64 @@ def check_valid_booking(user_id, device_id, check_time=False):
 
     return None, None
 
+
+def check_all_valid_bookings(user_id, check_time=False):
+    """Check all valid bookings for a user across all devices.
+
+    This function enables a single face scan to activate multiple devices
+    that the user has valid bookings for.
+
+    Returns:
+        List of (booking_id, booking_data) tuples
+    """
+    bookings_ref = db.collection("bookings")
+
+    query = (
+        bookings_ref
+        .where("userId", "==", user_id)
+        .where("status", "==", "approved")
+        .stream()
+    )
+
+    now = datetime.now(timezone.utc)
+    valid_bookings = []
+
+    for doc in query:
+        data = doc.to_dict()
+
+        if not check_time:
+            valid_bookings.append((doc.id, data))
+            continue
+
+        start_time = data.get("startTime")
+        end_time = data.get("endTime")
+
+        if start_time and end_time and start_time <= now <= end_time:
+            valid_bookings.append((doc.id, data))
+
+    return valid_bookings
+
+
 def update_device_in_use(device_id, user_id):
     """Update device status to in_use"""
     db.collection("devices").document(device_id).update({
         "status": "in_use",
         "currentUserId": user_id,
+        "updatedAt": firestore.SERVER_TIMESTAMP
     })
 
 def finish_booking_and_release_device(booking_id, device_id):
     """Mark booking as finished and reset device"""
     db.collection("bookings").document(booking_id).update({
         "status": "finished",
+        "finishedAt": firestore.SERVER_TIMESTAMP,
+        "updatedAt": firestore.SERVER_TIMESTAMP,
     })
     db.collection("devices").document(device_id).update({
         "status": "ready",
         "currentUserId": None,
+        "currentUserName": None,
+        "updatedAt": firestore.SERVER_TIMESTAMP
     })
 ```
 

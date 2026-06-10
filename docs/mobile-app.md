@@ -268,6 +268,62 @@ Column(
 )
 ```
 
+## Authentication Token Handling
+
+The mobile app now waits for the auth token to be ready before initializing Firestore queries to prevent permission denied errors.
+
+```dart
+// From main.dart
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  // 1. Initialize services and repositories
+  final authService = AuthService();
+  final firestoreService = FirestoreService();
+  final authRepo = AuthRepository(authService);
+  final homeRepo = HomeRepository(firestoreService);
+  final labRepo = LabRepository(firestoreService);
+
+  // 2. Wait for auth token ready before Firestore queries
+  // If user is logged in, force token refresh for Firestore
+  final currentUserCheck = FirebaseAuth.instance.currentUser;
+  if (currentUserCheck != null) {
+    await currentUserCheck.getIdTokenResult(true); // Force refresh token
+  }
+
+  // 3. Check current login session
+  final currentUser = FirebaseAuth.instance.currentUser;
+
+  runApp(
+    MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider.value(value: homeRepo),
+        RepositoryProvider.value(value: labRepo),
+      ],
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (context) => AuthCubit(authRepo)),
+          BlocProvider(create: (context) => DeviceCubit(homeRepo)),
+          BlocProvider(create: (context) => BookingCubit(labRepo)),
+          BlocProvider(
+            create: (context) =>
+                AdminBookingCubit(context.read<LabRepository>()),
+          ),
+        ],
+        child: MyApp(hasExistingSession: currentUser != null),
+      ),
+    ),
+  );
+}
+```
+
+This ensures that:
+- Auth token is refreshed before any Firestore operations
+- Permission denied errors are prevented
+- Existing sessions are handled correctly
+
 ## Services
 
 ### AuthService
@@ -364,6 +420,7 @@ class UserModel {
   final String num;             // Student number
   final String birthday;
   final String job;
+  final String? avatarUrl;     // Profile image URL
 }
 ```
 
@@ -388,11 +445,15 @@ class DeviceModel {
 class BookingModel {
   final String id;
   final String userId;
+  final String userName;        // User's full name
   final String deviceId;
+  final String deviceName;      // Device display name
   final DateTime startTime;
   final DateTime endTime;
-  final String status;           // "pending", "approved", "using", "finished", "cancelled"
+  final String status;         // "pending", "approved", "using", "finished", "cancelled"
   final DateTime createdAt;
+  final DateTime? approvedAt;
+  final DateTime? finishedAt;
 }
 ```
 

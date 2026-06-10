@@ -88,7 +88,7 @@ python main.py
 
 ## Documentation
 
-- [System Architecture](system-architecture.md)
+- [System Architecture](system-architecture.md) - Block diagrams, sequence diagrams, ERD
 - [AI Model Documentation](ai-model.md)
 - [Mobile App Documentation](mobile-app.md)
 - [Raspberry Sync Documentation](raspberry-sync.md)
@@ -96,6 +96,34 @@ python main.py
 - [API Reference](api.md)
 - [Deployment Guide](deployment.md)
 - [Troubleshooting](troubleshooting.md)
+
+## Recent Updates
+
+### Code Changes (2024)
+
+1. **GPIO Pin Configuration Enhanced**
+   - Button: GPIO 26 (previously GPIO 17)
+   - Relay dev01: GPIO 17 (previously GPIO 27)
+   - LED dev01: GPIO 18 (previously GPIO 22)
+   - Relay dev02: GPIO 27 (previously GPIO 5)
+   - LED dev02: GPIO 23
+   - Relay dev03: GPIO 22 (previously GPIO 6)
+   - LED dev03: GPIO 24
+
+2. **Auth Token Handling**
+   - Mobile app now waits for auth token ready before Firestore queries
+   - Prevents "permission denied" errors on startup
+   - Force refresh token when resuming existing session
+
+3. **Multi-Device Booking Support**
+   - Added `check_all_valid_bookings()` function
+   - Single face scan can activate multiple devices
+   - User name tracking in booking documents
+
+4. **User Name Handling**
+   - Added `userName` field in booking documents
+   - Added `deviceName` field in booking documents
+   - Added `currentUserName` field in device documents
 
 ## License
 

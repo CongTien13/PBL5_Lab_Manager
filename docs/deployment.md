@@ -206,9 +206,9 @@ Place `serviceAccountKey.json` in the project directory.
 ### Hardware Setup
 
 Connect components:
-- GPIO 17 -> Scan Button (with pull-up resistor)
-- GPIO 22 -> LED (dev01) + 330 ohm resistor
-- GPIO 27 -> Relay (dev01) -> Device power
+- GPIO 26 -> Scan Button (with pull-up resistor)
+- GPIO 18 -> LED (dev01) + 330 ohm resistor
+- GPIO 17 -> Relay (dev01) -> Device power
 
 ### Running
 
