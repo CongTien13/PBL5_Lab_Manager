@@ -280,6 +280,36 @@ def on_snapshot(col_snapshot, changes, read_time):
         handle_scan_request(doc.id, data)
 
 
+def on_device_snapshot(col_snapshot, changes, read_time):
+    """Listen for device status changes from mobile app."""
+    print(f"[DEVICE] on_device_snapshot called, changes: {len(changes)}")
+
+    for change in changes:
+        print(f"[DEVICE] change type: {change.type.name}")
+        if change.type.name not in ["ADDED", "MODIFIED"]:
+            continue
+
+        doc = change.document
+        device_id = doc.id
+        data = doc.to_dict()
+
+        print(f"[DEVICE] doc: {device_id}, data: {data}")
+
+        if device_id not in SUPPORTED_DEVICES:
+            print(f"[DEVICE] {device_id} not in SUPPORTED_DEVICES")
+            continue
+
+        status = data.get("status")
+        print(f"[DEVICE] {device_id} status changed to: {status}")
+
+        if status == "ready":
+            if device_id in active_devices:
+                booking_id = active_devices.pop(device_id)
+                print(f"[DEVICE] {device_id} released by mobile app, booking: {booking_id}")
+
+            relay_off(device_id)
+            print(f"[DEVICE] {device_id} relay OFF (released from mobile)")
+
 
 def main():
     print("[LISTENER] Raspberry scan listener started")
@@ -287,6 +317,10 @@ def main():
     print("SUPPORTED_DEVICES:", SUPPORTED_DEVICES)
 
     restore_active_devices()
+
+    # Listen for device status changes from mobile app (release device)
+    # Use a query that matches all devices (always true filter)
+    db.collection("devices").where("status", "!=", "").on_snapshot(on_device_snapshot)
 
     # Listen for scan requests on all supported devices
     for device_id in SUPPORTED_DEVICES:
