@@ -35,6 +35,9 @@ processed_requests = set()
 
 active_devices = {}
 
+# Flag to signal monitor thread to stop
+device_stop_flags = {}
+
 
 def monitor_device_until_end(device_id, booking_id, end_time):
     print(f"[MONITOR] {device_id} sẽ bật tới {end_time}")
@@ -43,7 +46,7 @@ def monitor_device_until_end(device_id, booking_id, end_time):
 
     last_warn_log = False
 
-    while True:
+    while device_id not in device_stop_flags:
         now = datetime.now(timezone.utc)
 
         if now >= end_time:
@@ -57,6 +60,11 @@ def monitor_device_until_end(device_id, booking_id, end_time):
             )
 
             active_devices.pop(device_id, None)
+            break
+
+        # Check if stopped by mobile app
+        if device_id in device_stop_flags:
+            print(f"[MONITOR] {device_id} dừng bởi mobile app")
             break
 
         # Blink LED when 10 minutes remaining
@@ -303,12 +311,22 @@ def on_device_snapshot(col_snapshot, changes, read_time):
         print(f"[DEVICE] {device_id} status changed to: {status}")
 
         if status == "ready":
+            # Signal monitor thread to stop
+            device_stop_flags[device_id] = True
+
             if device_id in active_devices:
                 booking_id = active_devices.pop(device_id)
                 print(f"[DEVICE] {device_id} released by mobile app, booking: {booking_id}")
 
             relay_off(device_id)
             print(f"[DEVICE] {device_id} relay OFF (released from mobile)")
+
+            # Clean up flag after a delay
+            def cleanup_flag():
+                time.sleep(2)
+                device_stop_flags.pop(device_id, None)
+
+            threading.Thread(target=cleanup_flag, daemon=True).start()
 
 
 def main():
